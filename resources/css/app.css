@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply min-h-screen bg-cream font-sans text-ink antialiased;
+        background-image:
+            radial-gradient(ellipse at top left, rgba(16, 48, 24, 0.05), transparent 45%),
+            radial-gradient(ellipse at bottom right, rgba(216, 80, 0, 0.06), transparent 40%);
+    }
+
+    h1, h2, h3, .font-display {
+        font-family: theme('fontFamily.display');
+        font-weight: 800;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full bg-box px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-box-dark focus:outline-none focus:ring-2 focus:ring-box focus:ring-offset-2 focus:ring-offset-cream;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-munch/20 bg-white/80 px-5 py-2.5 text-sm font-semibold text-munch transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-munch/30;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-munch transition hover:bg-munch/5;
+    }
+
+    .card-surface {
+        @apply rounded-3xl border border-munch/10 bg-white/90 shadow-[0_18px_50px_-28px_rgba(16,48,24,0.4)] backdrop-blur;
+    }
+
+    .input-field {
+        @apply w-full rounded-2xl border border-munch/15 bg-white px-4 py-2.5 text-sm text-ink shadow-sm placeholder:text-ink/40 focus:border-box focus:outline-none focus:ring-2 focus:ring-box/20;
+    }
+
+    .label-field {
+        @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink/60;
+    }
+
+    .badge {
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+    }
+
+    .admin-nav-link {
+        @apply flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/75 transition hover:bg-white/10 hover:text-white;
+    }
+
+    .admin-nav-link-active {
+        @apply bg-white/15 text-white;
+    }
+
+    .menu-card {
+        @apply flex flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_18px_50px_-32px_rgba(16,48,24,0.55)] ring-1 ring-munch/5 transition duration-300;
+    }
+
+    .menu-card:hover {
+        @apply -translate-y-1 shadow-[0_28px_60px_-28px_rgba(16,48,24,0.55)] ring-box/20;
+    }
+
+    .menu-fade-in {
+        animation: menuFadeUp 0.55s ease both;
+    }
+
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@keyframes menuFadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
