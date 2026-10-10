@@ -15,7 +15,6 @@ use App\Models\ProductOption;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
@@ -27,56 +26,69 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Staff', 'slug' => 'staff', 'description' => 'Kitchen and order operations'],
             ['name' => 'Customer', 'slug' => 'customer', 'description' => 'Online ordering customer'],
         ])->mapWithKeys(function (array $role) {
-            $model = Role::query()->create($role);
+            $model = Role::query()->updateOrCreate(
+                ['slug' => $role['slug']],
+                ['name' => $role['name'], 'description' => $role['description']],
+            );
 
             return [$role['slug'] => $model];
         });
 
-        User::query()->create([
-            'name' => 'MunchBox Admin',
-            'email' => 'admin@munchbox.rw',
-            'phone' => '+250799303456',
-            'password' => Hash::make('password'),
-            'role_id' => $roles['admin']->id,
-            'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
+        User::query()->updateOrCreate(
+            ['email' => env('ADMIN_EMAIL', 'admin@munchbox.rw')],
+            [
+                'name' => env('ADMIN_NAME', 'MunchBox Admin'),
+                'phone' => '+250799303456',
+                'password' => env('ADMIN_PASSWORD', 'password'),
+                'role_id' => $roles['admin']->id,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ],
+        );
 
-        User::query()->create([
-            'name' => 'Kitchen Staff',
-            'email' => 'staff@munchbox.rw',
-            'phone' => '+250799303457',
-            'password' => Hash::make('password'),
-            'role_id' => $roles['staff']->id,
-            'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
+        User::query()->updateOrCreate(
+            ['email' => 'staff@munchbox.rw'],
+            [
+                'name' => 'Kitchen Staff',
+                'phone' => '+250799303457',
+                'password' => 'password',
+                'role_id' => $roles['staff']->id,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ],
+        );
 
-        $customerUser = User::query()->create([
-            'name' => 'Jean Uwimana',
-            'email' => 'customer@munchbox.rw',
-            'phone' => '+250788123456',
-            'password' => Hash::make('password'),
-            'role_id' => $roles['customer']->id,
-            'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
+        $customerUser = User::query()->updateOrCreate(
+            ['email' => 'customer@munchbox.rw'],
+            [
+                'name' => 'Jean Uwimana',
+                'phone' => '+250788123456',
+                'password' => 'password',
+                'role_id' => $roles['customer']->id,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ],
+        );
 
-        $customer = Customer::query()->create([
-            'user_id' => $customerUser->id,
-            'name' => $customerUser->name,
-            'email' => $customerUser->email,
-            'phone' => $customerUser->phone,
-        ]);
+        $customer = Customer::query()->updateOrCreate(
+            ['user_id' => $customerUser->id],
+            [
+                'name' => $customerUser->name,
+                'email' => $customerUser->email,
+                'phone' => $customerUser->phone,
+            ],
+        );
 
-        $customer->addresses()->create([
-            'label' => 'Home',
-            'street' => 'KG 11 Ave, Nyarutarama',
-            'city' => 'Kigali',
-            'district' => 'Gasabo',
-            'landmark' => 'Near MTN Centre',
-            'is_default' => true,
-        ]);
+        if (! $customer->addresses()->exists()) {
+            $customer->addresses()->create([
+                'label' => 'Home',
+                'street' => 'KG 11 Ave, Nyarutarama',
+                'city' => 'Kigali',
+                'district' => 'Gasabo',
+                'landmark' => 'Near MTN Centre',
+                'is_default' => true,
+            ]);
+        }
 
         foreach ([
             ['key' => 'business_name', 'value' => 'MunchBox', 'group' => 'general', 'type' => 'string', 'label' => 'Business Name'],

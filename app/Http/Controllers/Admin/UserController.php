@@ -7,7 +7,6 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -34,7 +33,7 @@ class UserController extends Controller
 
         User::query()->create([
             ...$data,
-            'password' => Hash::make($data['password']),
+            'password' => $data['password'],
             'is_active' => $request->boolean('is_active', true),
         ]);
 
@@ -61,7 +60,7 @@ class UserController extends Controller
         ];
 
         if (! empty($data['password'])) {
-            $payload['password'] = Hash::make($data['password']);
+            $payload['password'] = $data['password'];
         }
 
         $user->update($payload);
