@@ -105,7 +105,15 @@ class DatabaseSeeder extends Seeder
             ['key' => 'opening_hours', 'value' => 'Mon–Sun 09:00–22:00', 'group' => 'general', 'type' => 'string', 'label' => 'Opening Hours'],
             ['key' => 'serving_style', 'value' => 'Served Fresh or Toasted', 'group' => 'general', 'type' => 'string', 'label' => 'Serving Style'],
         ] as $setting) {
-            BusinessSetting::query()->create($setting);
+            BusinessSetting::query()->updateOrCreate(
+                ['key' => $setting['key']],
+                [
+                    'value' => $setting['value'],
+                    'group' => $setting['group'],
+                    'type' => $setting['type'],
+                    'label' => $setting['label'],
+                ],
+            );
         }
 
         $ingredientDefs = [
@@ -144,19 +152,25 @@ class DatabaseSeeder extends Seeder
 
         $ingredients = collect();
         foreach ($ingredientDefs as $i => $def) {
-            $ingredient = Ingredient::query()->create([
-                'name' => $def['name'],
-                'sku' => 'ING-'.str_pad((string) ($i + 1), 3, '0', STR_PAD_LEFT),
-                'unit' => $def['unit'],
-                'is_active' => true,
-            ]);
+            $sku = 'ING-'.str_pad((string) ($i + 1), 3, '0', STR_PAD_LEFT);
 
-            InventoryItem::query()->create([
-                'ingredient_id' => $ingredient->id,
-                'quantity_on_hand' => $def['qty'],
-                'low_stock_threshold' => $def['threshold'],
-                'unit_cost' => 100,
-            ]);
+            $ingredient = Ingredient::query()->updateOrCreate(
+                ['sku' => $sku],
+                [
+                    'name' => $def['name'],
+                    'unit' => $def['unit'],
+                    'is_active' => true,
+                ],
+            );
+
+            InventoryItem::query()->updateOrCreate(
+                ['ingredient_id' => $ingredient->id],
+                [
+                    'quantity_on_hand' => $def['qty'],
+                    'low_stock_threshold' => $def['threshold'],
+                    'unit_cost' => 100,
+                ],
+            );
 
             $ingredients->put($def['name'], $ingredient);
         }
@@ -165,83 +179,99 @@ class DatabaseSeeder extends Seeder
             ->where('ingredient_id', $ingredients['Beef Jambon']->id)
             ->update(['quantity_on_hand' => 8]);
 
-        $sandwiches = Category::query()->create([
-            'name' => 'Signature Sandwiches',
-            'slug' => 'signature-sandwiches',
-            'description' => 'Our handcrafted classics — fresh or toasted',
-            'sort_order' => 1,
-            'is_active' => true,
-        ]);
+        $sandwiches = Category::query()->updateOrCreate(
+            ['slug' => 'signature-sandwiches'],
+            [
+                'name' => 'Signature Sandwiches',
+                'description' => 'Our handcrafted classics — fresh or toasted',
+                'sort_order' => 1,
+                'is_active' => true,
+            ],
+        );
 
-        $sides = Category::query()->create([
-            'name' => 'Sides & Combos',
-            'slug' => 'sides-combos',
-            'description' => 'Perfect add-ons for any sandwich',
-            'sort_order' => 2,
-            'is_active' => true,
-        ]);
+        $sides = Category::query()->updateOrCreate(
+            ['slug' => 'sides-combos'],
+            [
+                'name' => 'Sides & Combos',
+                'description' => 'Perfect add-ons for any sandwich',
+                'sort_order' => 2,
+                'is_active' => true,
+            ],
+        );
 
         $groups = [
-            'style' => OptionGroup::query()->create([
-                'name' => 'Serving Style',
-                'slug' => 'serving-style',
-                'type' => OptionType::Style,
-                'selection_type' => SelectionType::Single,
-                'is_required' => true,
-                'min_selections' => 1,
-                'max_selections' => 1,
-                'sort_order' => 0,
-            ]),
-            'bread' => OptionGroup::query()->create([
-                'name' => 'Bread Options',
-                'slug' => 'bread-options',
-                'type' => OptionType::Bread,
-                'selection_type' => SelectionType::Single,
-                'is_required' => true,
-                'min_selections' => 1,
-                'max_selections' => 1,
-                'sort_order' => 1,
-            ]),
-            'protein' => OptionGroup::query()->create([
-                'name' => 'Proteins',
-                'slug' => 'proteins',
-                'type' => OptionType::Protein,
-                'selection_type' => SelectionType::Multiple,
-                'is_required' => true,
-                'min_selections' => 1,
-                'max_selections' => 5,
-                'sort_order' => 2,
-            ]),
-            'toppings' => OptionGroup::query()->create([
-                'name' => 'Fresh Toppings',
-                'slug' => 'fresh-toppings',
-                'type' => OptionType::Topping,
-                'selection_type' => SelectionType::Multiple,
-                'is_required' => false,
-                'min_selections' => 0,
-                'max_selections' => 7,
-                'sort_order' => 3,
-            ]),
-            'sauces' => OptionGroup::query()->create([
-                'name' => 'Sauces',
-                'slug' => 'sauces',
-                'type' => OptionType::Sauce,
-                'selection_type' => SelectionType::Multiple,
-                'is_required' => false,
-                'min_selections' => 0,
-                'max_selections' => 3,
-                'sort_order' => 4,
-            ]),
-            'extras' => OptionGroup::query()->create([
-                'name' => 'Extras',
-                'slug' => 'extras',
-                'type' => OptionType::Extra,
-                'selection_type' => SelectionType::Multiple,
-                'is_required' => false,
-                'min_selections' => 0,
-                'max_selections' => 3,
-                'sort_order' => 5,
-            ]),
+            'style' => OptionGroup::query()->updateOrCreate(
+                ['slug' => 'serving-style'],
+                [
+                    'name' => 'Serving Style',
+                    'type' => OptionType::Style,
+                    'selection_type' => SelectionType::Single,
+                    'is_required' => true,
+                    'min_selections' => 1,
+                    'max_selections' => 1,
+                    'sort_order' => 0,
+                ],
+            ),
+            'bread' => OptionGroup::query()->updateOrCreate(
+                ['slug' => 'bread-options'],
+                [
+                    'name' => 'Bread Options',
+                    'type' => OptionType::Bread,
+                    'selection_type' => SelectionType::Single,
+                    'is_required' => true,
+                    'min_selections' => 1,
+                    'max_selections' => 1,
+                    'sort_order' => 1,
+                ],
+            ),
+            'protein' => OptionGroup::query()->updateOrCreate(
+                ['slug' => 'proteins'],
+                [
+                    'name' => 'Proteins',
+                    'type' => OptionType::Protein,
+                    'selection_type' => SelectionType::Multiple,
+                    'is_required' => true,
+                    'min_selections' => 1,
+                    'max_selections' => 5,
+                    'sort_order' => 2,
+                ],
+            ),
+            'toppings' => OptionGroup::query()->updateOrCreate(
+                ['slug' => 'fresh-toppings'],
+                [
+                    'name' => 'Fresh Toppings',
+                    'type' => OptionType::Topping,
+                    'selection_type' => SelectionType::Multiple,
+                    'is_required' => false,
+                    'min_selections' => 0,
+                    'max_selections' => 7,
+                    'sort_order' => 3,
+                ],
+            ),
+            'sauces' => OptionGroup::query()->updateOrCreate(
+                ['slug' => 'sauces'],
+                [
+                    'name' => 'Sauces',
+                    'type' => OptionType::Sauce,
+                    'selection_type' => SelectionType::Multiple,
+                    'is_required' => false,
+                    'min_selections' => 0,
+                    'max_selections' => 3,
+                    'sort_order' => 4,
+                ],
+            ),
+            'extras' => OptionGroup::query()->updateOrCreate(
+                ['slug' => 'extras'],
+                [
+                    'name' => 'Extras',
+                    'type' => OptionType::Extra,
+                    'selection_type' => SelectionType::Multiple,
+                    'is_required' => false,
+                    'min_selections' => 0,
+                    'max_selections' => 3,
+                    'sort_order' => 5,
+                ],
+            ),
         ];
 
         $optionDefs = [
@@ -292,18 +322,24 @@ class DatabaseSeeder extends Seeder
             foreach ($defs as $index => [$name, $price, $default]) {
                 $ingredient = $ingredients->get($name);
 
-                $option = ProductOption::query()->create([
-                    'option_group_id' => $groups[$groupKey]->id,
-                    'ingredient_id' => $ingredient?->id,
-                    'name' => $name,
-                    'price_adjustment' => $price,
-                    'is_default' => $default,
-                    'is_active' => true,
-                    'sort_order' => $index + 1,
-                ]);
+                $option = ProductOption::query()->updateOrCreate(
+                    [
+                        'option_group_id' => $groups[$groupKey]->id,
+                        'name' => $name,
+                    ],
+                    [
+                        'ingredient_id' => $ingredient?->id,
+                        'price_adjustment' => $price,
+                        'is_default' => $default,
+                        'is_active' => true,
+                        'sort_order' => $index + 1,
+                    ],
+                );
 
                 if ($ingredient) {
-                    $option->ingredients()->attach($ingredient->id, ['quantity_required' => 1]);
+                    $option->ingredients()->syncWithoutDetaching([
+                        $ingredient->id => ['quantity_required' => 1],
+                    ]);
                 }
 
                 if ($name === 'Fries & Soda Extra') {
@@ -382,28 +418,23 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($products as $def) {
-            $product = Product::query()->create([
-                'category_id' => $def['category']->id,
-                'name' => $def['name'],
-                'slug' => Str::slug($def['name']),
-                'description' => $def['description'],
-                'base_price' => $def['price'],
-                'image' => $def['image'] ?? null,
-                'is_customizable' => $def['customizable'] ?? true,
-                'is_active' => true,
-                'is_featured' => $def['featured'],
-                'sort_order' => $def['sort'],
-            ]);
+            $product = Product::query()->updateOrCreate(
+                ['slug' => Str::slug($def['name'])],
+                [
+                    'category_id' => $def['category']->id,
+                    'name' => $def['name'],
+                    'description' => $def['description'],
+                    'base_price' => $def['price'],
+                    'image' => $def['image'] ?? null,
+                    'is_customizable' => $def['customizable'] ?? true,
+                    'is_active' => true,
+                    'is_featured' => $def['featured'],
+                    'sort_order' => $def['sort'],
+                ],
+            );
 
             if ($product->is_customizable) {
                 $product->optionGroups()->sync(collect($groups)->pluck('id'));
-
-                // Mark product-specific defaults by flipping is_default on shared options is global;
-                // defaults are handled in the UI via option is_default + product description.
-                foreach ($def['defaults'] as $defaultName) {
-                    // Keep shared defaults; product descriptions already encode the signature build.
-                    unset($defaultName);
-                }
             }
 
             if ($product->category_id === $sandwiches->id) {
@@ -422,20 +453,15 @@ class DatabaseSeeder extends Seeder
                 if (str_contains($product->name, 'Beef') || str_contains($product->name, 'All-In-One')) {
                     $attach[$ingredients['Beef Jambon']->id] = ['quantity_required' => 1];
                 }
-                if (str_contains($product->name, 'Deluxe') || str_contains($product->name, 'All-In-One')) {
-                    if (! str_contains($product->name, 'Crispy') || str_contains($product->name, 'All-In-One')) {
-                        // salami on deluxe ham & all-in-one
-                    }
-                }
                 if ($product->name === 'Ham & Cheese Deluxe' || $product->name === 'All-In-One Supreme') {
                     $attach[$ingredients['Salami']->id] = ['quantity_required' => 1];
                 }
 
-                $product->ingredients()->attach($attach);
+                $product->ingredients()->syncWithoutDetaching($attach);
             }
 
             if ($product->name === 'Fries & Soda Extra') {
-                $product->ingredients()->attach([
+                $product->ingredients()->syncWithoutDetaching([
                     $ingredients['Potato Fries']->id => ['quantity_required' => 150],
                     $ingredients['Soda Can']->id => ['quantity_required' => 1],
                 ]);
