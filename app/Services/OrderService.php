@@ -46,6 +46,10 @@ class OrderService
             throw new RuntimeException('Your cart is empty.');
         }
 
+        if (blank($data['phone'] ?? null)) {
+            throw new InvalidArgumentException('Phone number is required to place an order.');
+        }
+
         return DB::transaction(function () use ($user, $data) {
             $customer = $this->resolveCustomer($user, $data);
             $fulfillment = FulfillmentType::from($data['fulfillment_type']);
@@ -98,11 +102,15 @@ class OrderService
 
             if ($fulfillment === FulfillmentType::Delivery) {
                 $address = $this->resolveAddress($customer, $data);
+                $street = $address?->street
+                    ?? ($data['address']['street'] ?? null)
+                    ?? ($data['address']['landmark'] ?? null)
+                    ?? 'Kigali';
 
                 Delivery::query()->create([
                     'order_id' => $order->id,
                     'address_id' => $address?->id,
-                    'address_line' => $address?->street ?? ($data['address']['street'] ?? ''),
+                    'address_line' => $street,
                     'city' => $address?->city ?? ($data['address']['city'] ?? 'Kigali'),
                     'district' => $address?->district ?? ($data['address']['district'] ?? null),
                     'landmark' => $address?->landmark ?? ($data['address']['landmark'] ?? null),
@@ -182,6 +190,11 @@ class OrderService
     private function resolveCustomer(?User $user, array $data): Customer
     {
         if ($user) {
+            $user->forceFill([
+                'name' => $data['name'],
+                'phone' => $data['phone'],
+            ])->save();
+
             $customer = $user->customer;
 
             if (! $customer) {
@@ -189,7 +202,7 @@ class OrderService
                     'user_id' => $user->id,
                     'name' => $data['name'],
                     'email' => $data['email'] ?? $user->email,
-                    'phone' => $data['phone'] ?? $user->phone,
+                    'phone' => $data['phone'],
                 ]);
             } else {
                 $customer->update([
@@ -215,20 +228,20 @@ class OrderService
             return $customer->addresses()->whereKey($data['address_id'])->first();
         }
 
-        if (empty($data['address']['street'])) {
-            throw new InvalidArgumentException('Delivery address is required.');
+        $street = trim((string) ($data['address']['street'] ?? ''));
+
+        if ($street === '') {
+            return null;
         }
 
-        $address = $customer->addresses()->create([
+        return $customer->addresses()->create([
             'label' => $data['address']['label'] ?? 'Delivery',
-            'street' => $data['address']['street'],
+            'street' => $street,
             'city' => $data['address']['city'] ?? 'Kigali',
             'district' => $data['address']['district'] ?? null,
             'landmark' => $data['address']['landmark'] ?? null,
             'is_default' => $customer->addresses()->count() === 0,
         ]);
-
-        return $address;
     }
 
     private function recordStatus(Order $order, ?OrderStatus $from, OrderStatus $to, ?User $user, ?string $notes): void

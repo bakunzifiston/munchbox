@@ -51,7 +51,9 @@ class CheckoutController extends Controller
         try {
             $order = $this->orders->createFromCart($request->user(), $request->validated());
         } catch (\Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            report($e);
+
+            return back()->withInput()->with('error', $e->getMessage() ?: 'Could not place your order. Please try again.');
         }
 
         session(['last_order_number' => $order->order_number]);

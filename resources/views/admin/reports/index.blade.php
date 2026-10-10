@@ -2,6 +2,7 @@
 
 @section('title', 'Reports')
 @section('heading', 'Reports')
+@section('subheading', 'Revenue and product performance')
 
 @section('content')
 <form class="mb-6 flex flex-wrap gap-3">
@@ -10,47 +11,34 @@
     <button class="btn-primary">Apply</button>
 </form>
 
-<div class="grid gap-4 sm:grid-cols-3">
-    <div class="rounded-3xl border border-munch/10 bg-white p-5 shadow-sm">
-        <p class="text-xs uppercase tracking-wider text-ink/40">Revenue</p>
-        <p class="mt-2 font-display text-3xl font-bold text-munch">{{ $revenueFormatted }}</p>
-    </div>
-    <div class="rounded-3xl border border-munch/10 bg-white p-5 shadow-sm">
-        <p class="text-xs uppercase tracking-wider text-ink/40">Orders</p>
-        <p class="mt-2 font-display text-3xl font-bold text-munch">{{ $orderCount }}</p>
-    </div>
-    <div class="rounded-3xl border border-munch/10 bg-white p-5 shadow-sm">
-        <p class="text-xs uppercase tracking-wider text-ink/40">Avg order</p>
-        <p class="mt-2 font-display text-3xl font-bold text-munch">{{ $avgOrder }}</p>
-    </div>
-</div>
+<x-admin.kpi-grid :items="$kpis" />
 
-<div class="mt-6 grid gap-6 lg:grid-cols-2">
-    <div class="rounded-3xl border border-munch/10 bg-white p-5 shadow-sm">
-        <h2 class="font-display text-lg font-bold text-munch">Daily revenue</h2>
+<div class="grid gap-6 lg:grid-cols-2">
+    <section class="rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-extrabold text-munch">Daily revenue</h2>
         <ul class="mt-4 space-y-2 text-sm">
             @forelse($byDay as $day)
-                <li class="flex justify-between">
+                <li class="flex justify-between rounded-2xl bg-[#F7F5F1] px-3 py-2.5">
                     <span>{{ \Carbon\Carbon::parse($day->day)->format('d M') }} · {{ $day->orders }} orders</span>
-                    <span class="font-semibold">{{ number_format($day->revenue, 0) }} RWF</span>
+                    <span class="font-bold text-munch">{{ number_format($day->revenue, 0) }} RWF</span>
                 </li>
             @empty
                 <li class="text-ink/40">No data in range.</li>
             @endforelse
         </ul>
-    </div>
-    <div class="rounded-3xl border border-munch/10 bg-white p-5 shadow-sm">
-        <h2 class="font-display text-lg font-bold text-munch">Top products</h2>
+    </section>
+    <section class="rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-extrabold text-munch">Top products</h2>
         <ul class="mt-4 space-y-2 text-sm">
             @forelse($topProducts as $product)
-                <li class="flex justify-between">
+                <li class="flex justify-between rounded-2xl bg-[#F7F5F1] px-3 py-2.5">
                     <span>{{ $product->product_name }} · {{ $product->qty }} sold</span>
-                    <span class="font-semibold">{{ number_format($product->revenue, 0) }} RWF</span>
+                    <span class="font-bold text-munch">{{ number_format($product->revenue, 0) }} RWF</span>
                 </li>
             @empty
                 <li class="text-ink/40">No product sales in range.</li>
             @endforelse
         </ul>
-    </div>
+    </section>
 </div>
 @endsection

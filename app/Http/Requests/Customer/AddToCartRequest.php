@@ -11,6 +11,18 @@ class AddToCartRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $options = collect($this->input('options', []))
+            ->flatten()
+            ->filter(fn ($id) => filled($id))
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $this->merge(['options' => $options]);
+    }
+
     public function rules(): array
     {
         return [

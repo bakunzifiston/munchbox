@@ -16,8 +16,8 @@
                 <input name="name" value="{{ old('name', $user->name) }}" class="input-field" required>
             </div>
             <div>
-                <label class="label-field">Phone</label>
-                <input name="phone" value="{{ old('phone', $user->phone) }}" class="input-field" required>
+                <label class="label-field">Phone number <span class="text-red-600">*</span></label>
+                <input type="tel" name="phone" value="{{ old('phone', $user->phone) }}" class="input-field" required minlength="9" maxlength="30" autocomplete="tel" placeholder="+250 7XX XXX XXX">
             </div>
             <div>
                 <label class="label-field">Email</label>

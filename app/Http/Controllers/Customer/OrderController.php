@@ -6,6 +6,8 @@ use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Support\OrderNumber;
+use App\Support\Phone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -48,11 +50,10 @@ class OrderController extends Controller
         $order = null;
 
         if ($request->filled('order_number') && $request->filled('phone')) {
-            $order = Order::query()
-                ->with(['items', 'statusHistories', 'delivery'])
-                ->where('order_number', $request->string('order_number'))
-                ->where('customer_phone', $request->string('phone'))
-                ->first();
+            $order = $this->findTrackableOrder(
+                $request->string('order_number')->toString(),
+                $request->string('phone')->toString(),
+            );
 
             if ($order) {
                 session(['last_order_number' => $order->order_number]);
@@ -79,6 +80,21 @@ class OrderController extends Controller
         return back()->with('success', 'Order cancelled.');
     }
 
+    private function findTrackableOrder(string $orderNumber, string $phone): ?Order
+    {
+        $normalized = OrderNumber::normalize($orderNumber);
+
+        if ($normalized === '' || Phone::digits($phone) === '') {
+            return null;
+        }
+
+        return Order::query()
+            ->with(['items', 'statusHistories', 'delivery'])
+            ->whereRaw('UPPER(order_number) = ?', [$normalized])
+            ->get()
+            ->first(fn (Order $order) => Phone::matches($order->customer_phone, $phone));
+    }
+
     private function authorizeView(Order $order, Request $request): void
     {
         $user = $request->user();
@@ -95,7 +111,7 @@ class OrderController extends Controller
             return;
         }
 
-        if ($request->filled('phone') && $order->customer_phone === $request->string('phone')->toString()) {
+        if ($request->filled('phone') && Phone::matches($order->customer_phone, $request->string('phone')->toString())) {
             return;
         }
 

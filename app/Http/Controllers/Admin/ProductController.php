@@ -22,7 +22,14 @@ class ProductController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.products.index', compact('products'));
+        $kpis = [
+            ['label' => 'Products', 'value' => Product::query()->count(), 'hint' => 'Total menu items'],
+            ['label' => 'Active', 'value' => Product::query()->where('is_active', true)->count(), 'hint' => 'Visible on storefront', 'tone' => 'success'],
+            ['label' => 'Featured', 'value' => Product::query()->where('is_featured', true)->count(), 'hint' => 'Highlighted on menu'],
+            ['label' => 'Hidden', 'value' => Product::query()->where('is_active', false)->count(), 'hint' => 'Not shown to customers', 'tone' => 'warn'],
+        ];
+
+        return view('admin.products.index', compact('products', 'kpis'));
     }
 
     public function create(): View

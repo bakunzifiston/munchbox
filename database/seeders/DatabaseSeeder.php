@@ -38,7 +38,7 @@ class DatabaseSeeder extends Seeder
             ['email' => env('ADMIN_EMAIL', 'admin@munchbox.rw')],
             [
                 'name' => env('ADMIN_NAME', 'MunchBox Admin'),
-                'phone' => '+250799303456',
+                'phone' => '0799303456',
                 'password' => env('ADMIN_PASSWORD', 'password'),
                 'role_id' => $roles['admin']->id,
                 'is_active' => true,
@@ -94,7 +94,7 @@ class DatabaseSeeder extends Seeder
             ['key' => 'business_name', 'value' => 'MunchBox', 'group' => 'general', 'type' => 'string', 'label' => 'Business Name'],
             ['key' => 'tagline', 'value' => 'Unbox the Flavor.', 'group' => 'general', 'type' => 'string', 'label' => 'Tagline'],
             ['key' => 'slogan', 'value' => 'Unbox the Flavor.', 'group' => 'general', 'type' => 'string', 'label' => 'Slogan'],
-            ['key' => 'phone', 'value' => '+250 799 303 456', 'group' => 'general', 'type' => 'string', 'label' => 'Phone'],
+            ['key' => 'phone', 'value' => '0799303456', 'group' => 'general', 'type' => 'string', 'label' => 'Phone'],
             ['key' => 'email', 'value' => 'hello@munchbox.rw', 'group' => 'general', 'type' => 'string', 'label' => 'Email'],
             ['key' => 'address', 'value' => 'Kigali, Rwanda', 'group' => 'general', 'type' => 'string', 'label' => 'Address'],
             ['key' => 'delivery_fee', 'value' => '1500', 'group' => 'orders', 'type' => 'decimal', 'label' => 'Delivery Fee (RWF)'],

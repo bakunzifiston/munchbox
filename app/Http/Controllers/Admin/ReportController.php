@@ -50,6 +50,13 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
+        $kpis = [
+            ['label' => 'Revenue', 'value' => Money::format($revenue), 'hint' => $from->format('d M').' – '.$to->format('d M'), 'tone' => 'success'],
+            ['label' => 'Orders', 'value' => $orderCount, 'hint' => 'Completed range'],
+            ['label' => 'Avg order', 'value' => Money::format($avgOrder), 'hint' => 'Revenue / orders'],
+            ['label' => 'Pending in range', 'value' => (int) ($byStatus[OrderStatus::Pending->value] ?? 0), 'hint' => 'Still open', 'tone' => 'warn'],
+        ];
+
         return view('admin.reports.index', [
             'from' => $from,
             'to' => $to,
@@ -58,6 +65,7 @@ class ReportController extends Controller
             'orderCount' => $orderCount,
             'avgOrder' => Money::format($avgOrder),
             'byStatus' => $byStatus,
+            'kpis' => $kpis,
             'byDay' => $byDay,
             'topProducts' => $topProducts,
         ]);

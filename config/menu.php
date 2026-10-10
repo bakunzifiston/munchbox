@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'phone' => '+250 799 303 456',
+    'phone' => '0799303456',
     'tagline' => 'Unbox the Flavor.',
     'slogan' => 'Unbox the Flavor.',
     'serving_style' => 'Served Fresh or Toasted',

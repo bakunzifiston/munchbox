@@ -9,6 +9,8 @@
     <a href="{{ route('admin.options.index') }}" class="text-sm font-bold text-box hover:underline">← All option groups</a>
 </div>
 
+<x-admin.kpi-grid :items="$kpis" />
+
 <div class="grid gap-6 xl:grid-cols-3">
     {{-- Group settings --}}
     <div class="space-y-4">

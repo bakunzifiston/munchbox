@@ -31,16 +31,29 @@ class OrderController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $todayRevenue = (float) Order::query()
+            ->today()
+            ->whereNotIn('status', [OrderStatus::Cancelled, OrderStatus::Rejected])
+            ->sum('total');
+
+        $kpis = [
+            ['label' => 'Today', 'value' => Order::query()->today()->count(), 'hint' => 'Orders placed today'],
+            ['label' => 'Pending', 'value' => Order::query()->pending()->count(), 'hint' => 'Need confirmation', 'tone' => 'warn'],
+            ['label' => 'In kitchen', 'value' => Order::query()->active()->where('status', '!=', OrderStatus::Pending)->count(), 'hint' => 'Confirmed → out for delivery'],
+            ['label' => 'Revenue today', 'value' => number_format($todayRevenue, 0).' RWF', 'hint' => 'Excludes cancelled', 'tone' => 'success'],
+        ];
+
         return view('admin.orders.index', [
             'orders' => $orders,
             'statuses' => OrderStatus::cases(),
             'filters' => $request->only(['status', 'q']),
+            'kpis' => $kpis,
         ]);
     }
 
     public function show(Order $order): View
     {
-        $order->load(['items.options', 'customer', 'delivery', 'payments', 'statusHistories.user']);
+        $order->load(['items.product', 'items.options', 'customer', 'delivery', 'payments', 'statusHistories.user']);
 
         return view('admin.orders.show', [
             'order' => $order,

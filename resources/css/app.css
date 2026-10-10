@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -14,7 +14,8 @@
 
     h1, h2, h3, .font-display {
         font-family: theme('fontFamily.display');
-        font-weight: 800;
+        font-weight: 700;
+        letter-spacing: -0.02em;
     }
 
     [x-cloak] {
@@ -24,11 +25,11 @@
 
 @layer components {
     .btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-full bg-box px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-box-dark focus:outline-none focus:ring-2 focus:ring-box focus:ring-offset-2 focus:ring-offset-cream;
+        @apply inline-flex items-center justify-center gap-2 rounded-full bg-box px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition duration-200 hover:-translate-y-0.5 hover:bg-box-dark hover:shadow-menu focus:outline-none focus:ring-2 focus:ring-box focus:ring-offset-2 focus:ring-offset-cream;
     }
 
     .btn-secondary {
-        @apply inline-flex items-center justify-center gap-2 rounded-full border border-munch/20 bg-white/80 px-5 py-2.5 text-sm font-semibold text-munch transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-munch/30;
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-munch/15 bg-white/90 px-5 py-2.5 text-sm font-semibold text-munch shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-box/30 hover:bg-white focus:outline-none focus:ring-2 focus:ring-munch/25;
     }
 
     .btn-ghost {
@@ -36,7 +37,7 @@
     }
 
     .card-surface {
-        @apply rounded-3xl border border-munch/10 bg-white/90 shadow-[0_18px_50px_-28px_rgba(16,48,24,0.4)] backdrop-blur;
+        @apply rounded-[28px] border border-munch/10 bg-white/95 shadow-menu backdrop-blur;
     }
 
     .input-field {
@@ -60,15 +61,53 @@
     }
 
     .menu-card {
-        @apply flex flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_18px_50px_-32px_rgba(16,48,24,0.55)] ring-1 ring-munch/5 transition duration-300;
+        @apply flex flex-col overflow-hidden rounded-[30px] bg-white shadow-menu ring-1 ring-munch/10 transition duration-300;
     }
 
     .menu-card:hover {
-        @apply -translate-y-1 shadow-[0_28px_60px_-28px_rgba(16,48,24,0.55)] ring-box/20;
+        @apply -translate-y-1.5 shadow-menu-hover ring-box/25;
+    }
+
+    .menu-card-media {
+        @apply relative aspect-[4/3] overflow-hidden bg-sand;
+    }
+
+    .menu-card-media-img {
+        @apply absolute inset-0 h-full w-full object-cover transition duration-700 ease-out;
+    }
+
+    .menu-card:hover .menu-card-media-img {
+        transform: scale(1.06);
     }
 
     .menu-fade-in {
         animation: menuFadeUp 0.55s ease both;
+    }
+
+    .site-nav-link {
+        @apply rounded-full px-3.5 py-2 text-sm font-semibold text-munch/80 transition hover:bg-white hover:text-munch hover:shadow-sm;
+    }
+
+    .site-nav-link-active {
+        @apply bg-white text-munch shadow-sm ring-1 ring-munch/10;
+    }
+
+    .chip-filter {
+        @apply shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition;
+    }
+
+    .chip-filter-active {
+        @apply bg-munch text-white shadow-soft;
+    }
+
+    .chip-filter-idle {
+        @apply bg-white text-munch ring-1 ring-munch/10 hover:ring-box/35;
+    }
+
+    .food-glow {
+        box-shadow:
+            0 24px 48px -28px rgba(16, 48, 24, 0.55),
+            0 8px 18px -12px rgba(216, 80, 0, 0.25);
     }
 
     .scrollbar-none {
@@ -89,5 +128,17 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .menu-fade-in,
+    .menu-card,
+    .btn-primary,
+    .btn-secondary,
+    .animate-floaty,
+    .animate-fade-up {
+        animation: none !important;
+        transition: none !important;
     }
 }

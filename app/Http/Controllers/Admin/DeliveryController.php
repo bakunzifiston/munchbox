@@ -29,7 +29,29 @@ class DeliveryController extends Controller
             ->latest()
             ->get();
 
-        return view('admin.deliveries.index', compact('deliveries', 'readyForDelivery'));
+        $activeDeliveries = Delivery::query()
+            ->whereHas('order', fn ($q) => $q->where('fulfillment_type', FulfillmentType::Delivery)
+                ->whereNotIn('status', [OrderStatus::Cancelled, OrderStatus::Rejected, OrderStatus::Delivered]))
+            ->count();
+
+        $outForDelivery = Order::query()
+            ->where('fulfillment_type', FulfillmentType::Delivery)
+            ->where('status', OrderStatus::OutForDelivery)
+            ->count();
+
+        $unassigned = Delivery::query()
+            ->where(fn ($q) => $q->whereNull('driver_name')->orWhere('driver_name', ''))
+            ->whereHas('order', fn ($q) => $q->whereIn('status', [OrderStatus::Ready, OrderStatus::OutForDelivery]))
+            ->count();
+
+        $kpis = [
+            ['label' => 'Active', 'value' => $activeDeliveries, 'hint' => 'Open delivery orders'],
+            ['label' => 'Ready', 'value' => $readyForDelivery->where('status', OrderStatus::Ready)->count(), 'hint' => 'Waiting for driver', 'tone' => 'warn'],
+            ['label' => 'Out for delivery', 'value' => $outForDelivery, 'hint' => 'On the road', 'tone' => 'info'],
+            ['label' => 'No driver', 'value' => $unassigned, 'hint' => 'Need assignment', 'tone' => $unassigned > 0 ? 'danger' : 'default'],
+        ];
+
+        return view('admin.deliveries.index', compact('deliveries', 'readyForDelivery', 'kpis'));
     }
 
     public function update(Request $request, Delivery $delivery): RedirectResponse

@@ -2,24 +2,47 @@
 
 @section('title', 'Categories')
 @section('heading', 'Categories')
+@section('subheading', 'Organize the menu into clear sections')
 
 @section('content')
+<x-admin.kpi-grid :items="$kpis" />
+
 <div class="grid gap-6 lg:grid-cols-3">
-    <form method="POST" action="{{ route('admin.categories.store') }}" class="rounded-3xl border border-munch/10 bg-white p-5 shadow-sm space-y-3 h-fit">
+    <form method="POST" action="{{ route('admin.categories.store') }}" class="h-fit space-y-3 rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
         @csrf
-        <h2 class="font-display text-lg font-bold text-munch">Add category</h2>
-        <input name="name" class="input-field" placeholder="Name" required>
-        <textarea name="description" class="input-field" rows="2" placeholder="Description"></textarea>
-        <input type="number" name="sort_order" class="input-field" placeholder="Sort order" value="0">
+        <h2 class="text-lg font-extrabold text-munch">Add category</h2>
+        <div>
+            <label class="label-field">Name</label>
+            <input name="name" class="input-field" placeholder="e.g. Signature Sandwiches" required>
+        </div>
+        <div>
+            <label class="label-field">Description</label>
+            <textarea name="description" class="input-field" rows="2" placeholder="Short description"></textarea>
+        </div>
+        <div>
+            <label class="label-field">Sort order</label>
+            <input type="number" name="sort_order" class="input-field" value="0">
+        </div>
         <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" value="1" checked> Active</label>
         <button class="btn-primary w-full">Create</button>
     </form>
 
-    <div class="lg:col-span-2 space-y-3">
+    <div class="space-y-3 lg:col-span-2">
         @forelse($categories as $category)
-            <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="rounded-3xl border border-munch/10 bg-white p-4 shadow-sm">
+            <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
                 @csrf @method('PUT')
-                <div class="grid gap-3 sm:grid-cols-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <p class="text-lg font-extrabold text-munch">{{ $category->name }}</p>
+                        <p class="mt-1 text-sm text-ink/45">{{ $category->products_count }} products · sort {{ $category->sort_order }}</p>
+                    </div>
+                    @if($category->is_active)
+                        <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">Active</span>
+                    @else
+                        <span class="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold text-stone-600 ring-1 ring-stone-200">Hidden</span>
+                    @endif
+                </div>
+                <div class="mt-4 grid gap-3 sm:grid-cols-4">
                     <input name="name" value="{{ $category->name }}" class="input-field sm:col-span-2">
                     <input type="number" name="sort_order" value="{{ $category->sort_order }}" class="input-field">
                     <div class="flex items-center gap-3">
@@ -27,10 +50,9 @@
                         <button class="btn-secondary !px-3 text-xs">Save</button>
                     </div>
                 </div>
-                <p class="mt-2 text-xs text-ink/45">{{ $category->products_count }} products</p>
             </form>
         @empty
-            <div class="rounded-3xl border border-dashed border-munch/20 p-10 text-center text-ink/40">No categories yet.</div>
+            <div class="rounded-[28px] border border-dashed border-munch/20 p-12 text-center text-ink/40">No categories yet.</div>
         @endforelse
     </div>
 </div>

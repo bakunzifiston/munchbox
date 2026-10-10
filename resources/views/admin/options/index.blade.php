@@ -5,14 +5,16 @@
 @section('subheading', 'Serving style, bread, proteins, toppings & sauces')
 
 @section('content')
-<div class="mb-6 rounded-2xl border border-munch/10 bg-white px-4 py-3 text-sm text-ink/60">
+<x-admin.kpi-grid :items="$kpis" />
+
+<p class="mb-6 text-sm text-ink/55">
     These are the customization choices customers see when building a sandwich.
-    Edit a group to add, remove, or change prices for individual choices.
-    Attach groups to products under <a href="{{ route('admin.products.index') }}" class="font-bold text-box hover:underline">Menu & Products</a>.
-</div>
+    Attach groups to products under
+    <a href="{{ route('admin.products.index') }}" class="font-bold text-box hover:underline">Menu & Products</a>.
+</p>
 
 <div class="grid gap-6 xl:grid-cols-3">
-    <form method="POST" action="{{ route('admin.options.store') }}" class="h-fit space-y-3 rounded-[24px] border border-munch/10 bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.options.store') }}" class="h-fit space-y-3 rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
         @csrf
         <h2 class="text-lg font-extrabold text-munch">Add option group</h2>
         <div>
@@ -61,7 +63,7 @@
     <div class="space-y-3 xl:col-span-2">
         @forelse($groups as $group)
             <a href="{{ route('admin.options.show', $group) }}"
-               class="block rounded-[24px] border border-munch/10 bg-white p-5 shadow-sm transition hover:border-box/40 hover:shadow-md">
+               class="block rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm transition hover:border-box/40 hover:shadow-md">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
@@ -76,9 +78,6 @@
                         <p class="mt-1 text-sm text-ink/50">
                             {{ $group->type->label() }} ·
                             {{ $group->selection_type === \App\Enums\SelectionType::Single ? 'Choose one' : 'Choose up to '.$group->max_selections }}
-                            @if($group->is_required && $group->selection_type === \App\Enums\SelectionType::Multiple)
-                                · min {{ $group->min_selections }}
-                            @endif
                         </p>
                     </div>
                     <div class="text-right text-sm">

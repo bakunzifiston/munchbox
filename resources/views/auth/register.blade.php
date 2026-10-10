@@ -8,8 +8,9 @@
             <x-input-error :messages="$errors->get('name')" class="mt-2" />
         </div>
         <div>
-            <x-input-label for="phone" :value="__('Phone')" />
-            <x-text-input id="phone" class="block mt-1 w-full input-field" type="text" name="phone" :value="old('phone')" required autocomplete="tel" />
+            <x-input-label for="phone" :value="__('Phone number')" />
+            <x-text-input id="phone" class="block mt-1 w-full input-field" type="tel" name="phone" :value="old('phone')" required minlength="9" maxlength="30" autocomplete="tel" placeholder="+250 7XX XXX XXX" />
+            <p class="mt-1 text-xs text-ink/45">Required — we’ll use this to confirm your orders.</p>
             <x-input-error :messages="$errors->get('phone')" class="mt-2" />
         </div>
         <div>

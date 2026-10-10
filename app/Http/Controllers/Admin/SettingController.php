@@ -14,7 +14,14 @@ class SettingController extends Controller
     {
         $settings = BusinessSetting::query()->orderBy('group')->orderBy('key')->get()->groupBy('group');
 
-        return view('admin.settings.edit', compact('settings'));
+        $kpis = [
+            ['label' => 'Groups', 'value' => $settings->count(), 'hint' => 'Setting sections'],
+            ['label' => 'Settings', 'value' => $settings->flatten()->count(), 'hint' => 'Configurable values'],
+            ['label' => 'Delivery fee', 'value' => number_format((float) BusinessSetting::getValue('delivery_fee', 1500), 0).' RWF', 'hint' => 'Current fee'],
+            ['label' => 'Min order', 'value' => number_format((float) BusinessSetting::getValue('min_order_amount', 0), 0).' RWF', 'hint' => 'Checkout minimum', 'tone' => 'info'],
+        ];
+
+        return view('admin.settings.edit', compact('settings', 'kpis'));
     }
 
     public function update(Request $request): RedirectResponse

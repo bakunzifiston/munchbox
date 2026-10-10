@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Services\CartService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -17,7 +18,20 @@ class CartController extends Controller
 
     public function index(): View
     {
-        return view('customer.cart.index', $this->cart->summary());
+        $summary = $this->cart->summary();
+        $inCartIds = collect($summary['items'])->pluck('product_id')->unique()->all();
+
+        $suggestions = Product::query()
+            ->active()
+            ->when($inCartIds !== [], fn ($q) => $q->whereNotIn('id', $inCartIds))
+            ->orderByDesc('is_featured')
+            ->orderBy('sort_order')
+            ->limit(4)
+            ->get();
+
+        return view('customer.cart.index', array_merge($summary, [
+            'suggestions' => $suggestions,
+        ]));
     }
 
     public function store(AddToCartRequest $request, Product $product): RedirectResponse
@@ -36,7 +50,7 @@ class CartController extends Controller
 
         return redirect()
             ->route('cart.index')
-            ->with('success', "{$product->name} added to your cart.");
+            ->with('success', "{$product->name} added. You can keep shopping or checkout when ready.");
     }
 
     public function update(Request $request, string $key): RedirectResponse
@@ -66,11 +80,15 @@ class CartController extends Controller
             $selected = $group->activeOptions->whereIn('id', $optionIds)->count();
 
             if ($group->is_required && $selected < max(1, $group->min_selections)) {
-                abort(422, "Please choose {$group->name}.");
+                throw ValidationException::withMessages([
+                    'options' => "Please choose {$group->name}.",
+                ]);
             }
 
             if ($selected > $group->max_selections) {
-                abort(422, "Too many selections for {$group->name}.");
+                throw ValidationException::withMessages([
+                    'options' => "Too many selections for {$group->name}.",
+                ]);
             }
         }
     }

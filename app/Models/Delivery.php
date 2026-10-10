@@ -42,8 +42,12 @@ class Delivery extends Model
 
     public function fullAddress(): string
     {
-        return collect([$this->address_line, $this->district, $this->city, $this->landmark])
+        $parts = collect([$this->address_line, $this->district, $this->city, $this->landmark])
+            ->map(fn ($part) => trim((string) $part))
             ->filter()
-            ->implode(', ');
+            ->unique(fn ($part) => mb_strtolower($part))
+            ->values();
+
+        return $parts->implode(', ');
     }
 }

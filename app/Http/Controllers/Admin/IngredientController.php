@@ -20,7 +20,17 @@ class IngredientController extends Controller
             ->orderBy('name')
             ->paginate(20);
 
-        return view('admin.ingredients.index', compact('ingredients'));
+        $all = Ingredient::query()->with('inventoryItem')->get();
+        $lowStock = $all->filter(fn (Ingredient $ingredient) => $ingredient->inventoryItem?->isLowStock())->count();
+
+        $kpis = [
+            ['label' => 'Ingredients', 'value' => $all->count(), 'hint' => 'In catalog'],
+            ['label' => 'Active', 'value' => $all->where('is_active', true)->count(), 'hint' => 'Usable on menu', 'tone' => 'success'],
+            ['label' => 'Low stock', 'value' => $lowStock, 'hint' => 'At or below threshold', 'tone' => $lowStock > 0 ? 'warn' : 'default'],
+            ['label' => 'Inactive', 'value' => $all->where('is_active', false)->count(), 'hint' => 'Hidden from options'],
+        ];
+
+        return view('admin.ingredients.index', compact('ingredients', 'kpis'));
     }
 
     public function store(Request $request): RedirectResponse

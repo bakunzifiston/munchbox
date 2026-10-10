@@ -171,6 +171,17 @@ function locationPicker(areas) {
             document.querySelectorAll('[data-location-detail]').forEach((el) => {
                 el.textContent = this.location.detail;
             });
+
+            const street = document.querySelector('[name="address[street]"]');
+            const city = document.querySelector('[name="address[city]"]');
+            const district = document.querySelector('[name="address[district]"]');
+            const landmark = document.querySelector('[name="address[landmark]"]');
+            if (street) street.value = this.location.street || this.location.title || street.value;
+            if (city) city.value = this.location.city || 'Kigali';
+            if (district && this.location.detail) {
+                district.value = this.location.detail.split(',')[0]?.trim() || district.value;
+            }
+            if (landmark && this.location.detail) landmark.value = this.location.detail;
         },
     }
 }

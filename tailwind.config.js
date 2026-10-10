@@ -12,7 +12,6 @@ export default {
     theme: {
         extend: {
             colors: {
-                // MunchBox brand palette (from logo)
                 munch: {
                     DEFAULT: '#103018',
                     deep: '#0b2412',
@@ -23,11 +22,10 @@ export default {
                     dark: '#B84400',
                     soft: '#FF7A33',
                 },
-                cream: '#FAFAF8',
+                cream: '#F7F5F0',
                 ink: '#142018',
                 sage: '#E7EEE9',
                 sand: '#F2EDE6',
-                // Keep aliases so existing views keep working while we migrate
                 forest: {
                     DEFAULT: '#103018',
                     deep: '#0b2412',
@@ -36,8 +34,27 @@ export default {
                 toast: '#D85000',
             },
             fontFamily: {
-                sans: ['Manrope', ...defaultTheme.fontFamily.sans],
-                display: ['Manrope', ...defaultTheme.fontFamily.sans],
+                sans: ['Outfit', ...defaultTheme.fontFamily.sans],
+                display: ['Outfit', ...defaultTheme.fontFamily.sans],
+            },
+            boxShadow: {
+                menu: '0 22px 50px -28px rgba(16, 48, 24, 0.45)',
+                'menu-hover': '0 32px 60px -24px rgba(16, 48, 24, 0.5)',
+                soft: '0 10px 30px -18px rgba(16, 48, 24, 0.28)',
+            },
+            keyframes: {
+                floaty: {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-8px)' },
+                },
+                fadeUp: {
+                    from: { opacity: '0', transform: 'translateY(18px)' },
+                    to: { opacity: '1', transform: 'translateY(0)' },
+                },
+            },
+            animation: {
+                floaty: 'floaty 5s ease-in-out infinite',
+                'fade-up': 'fadeUp 0.6s ease both',
             },
         },
     },

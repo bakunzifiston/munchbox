@@ -18,7 +18,7 @@
         </div>
         <div class="mt-8 flex flex-wrap gap-3">
             <a href="{{ route('menu.index') }}" class="btn-primary">Browse menu</a>
-            <a href="tel:+250799303456" class="btn-secondary border-white/30 bg-transparent text-white hover:bg-white/10">+250 799 303 456</a>
+            <a href="tel:0799303456" class="btn-secondary border-white/30 bg-transparent text-white hover:bg-white/10">0799303456</a>
         </div>
     </div>
 </section>
@@ -60,7 +60,7 @@
         </div>
         <div>
             <p class="text-2xl font-extrabold text-munch">Fast delivery</p>
-            <p class="mt-2 text-sm text-ink/65">Call <a class="font-semibold text-box" href="tel:+250799303456">+250 799 303 456</a> or order online.</p>
+            <p class="mt-2 text-sm text-ink/65">Call <a class="font-semibold text-box" href="tel:0799303456">0799303456</a> or order online.</p>
         </div>
     </div>
 </section>

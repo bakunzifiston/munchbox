@@ -25,7 +25,7 @@ class AccountController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'min:9', 'max:30', 'regex:/^\+?[0-9\s()-]+$/'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
         ]);
 

@@ -17,7 +17,17 @@ class UserController extends Controller
         $users = User::query()->with('role')->latest()->paginate(20);
         $roles = Role::query()->orderBy('name')->get();
 
-        return view('admin.users.index', compact('users', 'roles'));
+        $allUsers = User::query()->with('role')->get();
+        $staffCount = $allUsers->filter(fn (User $user) => $user->isStaff())->count();
+
+        $kpis = [
+            ['label' => 'Users', 'value' => $allUsers->count(), 'hint' => 'All accounts'],
+            ['label' => 'Active', 'value' => $allUsers->where('is_active', true)->count(), 'hint' => 'Can sign in', 'tone' => 'success'],
+            ['label' => 'Staff / admin', 'value' => $staffCount, 'hint' => 'Back-office access', 'tone' => 'info'],
+            ['label' => 'Inactive', 'value' => $allUsers->where('is_active', false)->count(), 'hint' => 'Disabled accounts', 'tone' => 'warn'],
+        ];
+
+        return view('admin.users.index', compact('users', 'roles', 'kpis'));
     }
 
     public function store(Request $request): RedirectResponse

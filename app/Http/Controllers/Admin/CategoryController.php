@@ -15,7 +15,14 @@ class CategoryController extends Controller
     {
         $categories = Category::query()->withCount('products')->orderBy('sort_order')->get();
 
-        return view('admin.categories.index', compact('categories'));
+        $kpis = [
+            ['label' => 'Categories', 'value' => $categories->count(), 'hint' => 'Menu sections'],
+            ['label' => 'Active', 'value' => $categories->where('is_active', true)->count(), 'hint' => 'Shown on menu', 'tone' => 'success'],
+            ['label' => 'With products', 'value' => $categories->where('products_count', '>', 0)->count(), 'hint' => 'Non-empty categories'],
+            ['label' => 'Products', 'value' => $categories->sum('products_count'), 'hint' => 'Linked menu items'],
+        ];
+
+        return view('admin.categories.index', compact('categories', 'kpis'));
     }
 
     public function store(Request $request): RedirectResponse

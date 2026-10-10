@@ -24,10 +24,18 @@ class OptionGroupController extends Controller
             ->orderBy('name')
             ->get();
 
+        $kpis = [
+            ['label' => 'Groups', 'value' => $groups->count(), 'hint' => 'Customization sections'],
+            ['label' => 'Active', 'value' => $groups->where('is_active', true)->count(), 'hint' => 'Available to attach', 'tone' => 'success'],
+            ['label' => 'Choices', 'value' => $groups->sum('options_count'), 'hint' => 'Total selectable options'],
+            ['label' => 'Required', 'value' => $groups->where('is_required', true)->count(), 'hint' => 'Must pick before cart', 'tone' => 'info'],
+        ];
+
         return view('admin.options.index', [
             'groups' => $groups,
             'types' => OptionType::cases(),
             'selectionTypes' => SelectionType::cases(),
+            'kpis' => $kpis,
         ]);
     }
 
@@ -51,11 +59,19 @@ class OptionGroupController extends Controller
     {
         $option->load(['options' => fn ($q) => $q->orderBy('sort_order')->orderBy('name')]);
 
+        $kpis = [
+            ['label' => 'Choices', 'value' => $option->options->count(), 'hint' => 'In this group'],
+            ['label' => 'Active', 'value' => $option->options->where('is_active', true)->count(), 'hint' => 'Shown to customers', 'tone' => 'success'],
+            ['label' => 'Defaults', 'value' => $option->options->where('is_default', true)->count(), 'hint' => 'Pre-selected'],
+            ['label' => 'Selection', 'value' => $option->selection_type === SelectionType::Single ? 'Single' : 'Multi', 'hint' => 'Max '.$option->max_selections, 'tone' => 'info'],
+        ];
+
         return view('admin.options.show', [
             'group' => $option,
             'types' => OptionType::cases(),
             'selectionTypes' => SelectionType::cases(),
             'ingredients' => Ingredient::query()->orderBy('name')->get(['id', 'name', 'unit']),
+            'kpis' => $kpis,
         ]);
     }
 

@@ -2,17 +2,18 @@
 
 @section('title', 'Ingredients')
 @section('heading', 'Ingredients')
-@section('subheading', 'Add, edit, or remove ingredients used in menu options')
+@section('subheading', 'Catalog items used in recipes and inventory')
 
 @section('content')
-<div class="mb-6 rounded-2xl border border-munch/10 bg-white px-4 py-3 text-sm text-ink/60">
+<x-admin.kpi-grid :items="$kpis" />
+
+<p class="mb-6 text-sm text-ink/55">
     Stock quantity is adjusted under
     <a href="{{ route('admin.inventory.index') }}" class="font-bold text-box hover:underline">Inventory</a>.
-    Here you manage ingredient details, thresholds, and whether they stay active.
-</div>
+</p>
 
 <div class="grid gap-6 xl:grid-cols-3">
-    <form method="POST" action="{{ route('admin.ingredients.store') }}" class="h-fit space-y-3 rounded-[24px] border border-munch/10 bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.ingredients.store') }}" class="h-fit space-y-3 rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
         @csrf
         <h2 class="text-lg font-extrabold text-munch">Add ingredient</h2>
         <div>
@@ -46,7 +47,7 @@
     <div class="space-y-3 xl:col-span-2">
         @forelse($ingredients as $ingredient)
             @php $low = $ingredient->inventoryItem?->isLowStock(); @endphp
-            <div class="rounded-[24px] border bg-white p-4 shadow-sm {{ $low ? 'border-amber-200' : 'border-munch/10' }} {{ $ingredient->is_active ? '' : 'opacity-60' }}">
+            <div class="rounded-[28px] border bg-white p-5 shadow-sm {{ $low ? 'border-amber-200' : 'border-munch/10' }} {{ $ingredient->is_active ? '' : 'opacity-60' }}">
                 <form method="POST" action="{{ route('admin.ingredients.update', $ingredient) }}">
                     @csrf
                     @method('PATCH')
