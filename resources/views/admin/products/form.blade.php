@@ -4,7 +4,7 @@
 @section('heading', $product->exists ? 'Edit product' : 'New product')
 
 @section('content')
-<form method="POST" action="{{ $product->exists ? route('admin.products.update', $product) : route('admin.products.store') }}" class="mx-auto max-w-3xl space-y-5 rounded-3xl border border-munch/10 bg-white p-6 shadow-sm">
+<form method="POST" action="{{ $product->exists ? route('admin.products.update', $product) : route('admin.products.store') }}" enctype="multipart/form-data" class="mx-auto max-w-3xl space-y-5 rounded-3xl border border-munch/10 bg-white p-6 shadow-sm">
     @csrf
     @if($product->exists) @method('PUT') @endif
 
@@ -32,6 +32,38 @@
         <div>
             <label class="label-field">Sort order</label>
             <input type="number" name="sort_order" value="{{ old('sort_order', $product->sort_order ?? 0) }}" class="input-field" min="0">
+        </div>
+    </div>
+
+    <div>
+        <label class="label-field" for="image">Product image</label>
+        <p class="mb-2 text-xs text-ink/45">JPG, PNG, or WebP · max 4 MB. Shown on the menu and product page.</p>
+        <div class="flex flex-wrap items-start gap-4">
+            <div
+                id="image-preview"
+                class="h-28 w-28 shrink-0 rounded-2xl bg-cover bg-center ring-1 ring-munch/10 {{ $product->image ? '' : 'bg-[#FAF8F4]' }}"
+                @if($product->image)
+                    style="background-image: url('{{ asset($product->image) }}')"
+                @endif
+            ></div>
+            <div class="min-w-0 flex-1 space-y-2">
+                <input
+                    id="image"
+                    type="file"
+                    name="image"
+                    accept="image/jpeg,image/png,image/webp"
+                    class="block w-full text-sm text-ink/70 file:mr-3 file:rounded-full file:border-0 file:bg-munch file:px-4 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-munch/90"
+                >
+                @error('image')
+                    <p class="text-xs text-red-600">{{ $message }}</p>
+                @enderror
+                @if($product->image)
+                    <label class="flex items-center gap-2 text-sm text-ink/60">
+                        <input type="checkbox" name="remove_image" value="1">
+                        Remove current image
+                    </label>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -69,4 +101,15 @@
         <a href="{{ route('admin.products.index') }}" class="btn-secondary">Cancel</a>
     </div>
 </form>
+
+<script>
+    document.getElementById('image')?.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        const preview = document.getElementById('image-preview');
+        if (!file || !preview) return;
+        const url = URL.createObjectURL(file);
+        preview.style.backgroundImage = `url('${url}')`;
+        preview.classList.remove('bg-[#FAF8F4]');
+    });
+</script>
 @endsection

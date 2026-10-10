@@ -8,6 +8,8 @@ use App\Models\OptionGroup;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -45,6 +47,7 @@ class ProductController extends Controller
     {
         $data = $this->validated($request);
         $data['slug'] = Str::slug($data['name']);
+        $data['image'] = $this->storeImage($request->file('image'));
 
         $product = Product::query()->create($data);
         $product->optionGroups()->sync($request->input('option_groups', []));
@@ -68,6 +71,16 @@ class ProductController extends Controller
         $data = $this->validated($request);
         $data['slug'] = Str::slug($data['name']);
 
+        if ($request->boolean('remove_image') && ! $request->hasFile('image')) {
+            $this->deleteStoredImage($product->image);
+            $data['image'] = null;
+        } elseif ($request->hasFile('image')) {
+            $this->deleteStoredImage($product->image);
+            $data['image'] = $this->storeImage($request->file('image'));
+        } else {
+            unset($data['image']);
+        }
+
         $product->update($data);
         $product->optionGroups()->sync($request->input('option_groups', []));
 
@@ -76,6 +89,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        $this->deleteStoredImage($product->image);
         $product->delete();
 
         return back()->with('success', 'Product deleted.');
@@ -88,7 +102,8 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'base_price' => ['required', 'numeric', 'min:0'],
-            'image' => ['nullable', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'remove_image' => ['nullable', 'boolean'],
             'is_customizable' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
@@ -102,7 +117,28 @@ class ProductController extends Controller
         }
 
         $data['sort_order'] = $data['sort_order'] ?? 0;
+        unset($data['remove_image']);
 
         return $data;
+    }
+
+    private function storeImage(?UploadedFile $file): ?string
+    {
+        if (! $file) {
+            return null;
+        }
+
+        $path = $file->store('products', 'public');
+
+        return 'storage/'.$path;
+    }
+
+    private function deleteStoredImage(?string $path): void
+    {
+        if (! $path || ! str_starts_with($path, 'storage/products/')) {
+            return;
+        }
+
+        Storage::disk('public')->delete(Str::after($path, 'storage/'));
     }
 }
