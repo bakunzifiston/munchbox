@@ -22,7 +22,7 @@
                     <h2 class="text-xl font-extrabold text-munch">{{ $item->ingredient->name }}</h2>
                     <p class="mt-1 text-sm text-ink/55">
                         On hand: <strong class="text-munch">{{ rtrim(rtrim(number_format((float) $item->quantity_on_hand, 2), '0'), '.') }}</strong> {{ $item->ingredient->unit }}
-                        · Threshold {{ rtrim(rtrim(number_format((float) $item->low_stock_threshold, 2), '0'), '.') }}
+                        · Minimum {{ $item->formattedThreshold() }}
                         @if($item->isLowStock())
                             <span class="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Low</span>
                         @endif
@@ -30,18 +30,22 @@
                 </div>
                 <a href="{{ route('admin.inventory.movements', $item) }}" class="btn-ghost text-sm">Movements</a>
             </div>
-            <form method="POST" action="{{ route('admin.inventory.adjust', $item) }}" class="mt-4 grid gap-3 sm:grid-cols-5">
+            <form method="POST" action="{{ route('admin.inventory.adjust', $item) }}" class="mt-4 grid gap-2 sm:grid-cols-[1.2fr_1fr_1fr_2fr_auto]" x-data="{ action: 'receive' }">
                 @csrf
-                <select name="action" class="input-field">
-                    <option value="receive">Receive</option>
-                    <option value="use">Use</option>
+                <select name="action" class="input-field" x-model="action" aria-label="Stock action">
+                    <option value="receive">Receive stock</option>
+                    <option value="use">Use (kitchen)</option>
                     <option value="waste">Waste</option>
-                    <option value="adjustment">Adjustment (+/-)</option>
+                    <option value="adjustment">Correction</option>
                 </select>
-                <input type="number" step="0.01" name="quantity" class="input-field" placeholder="Qty" required>
-                <input type="number" step="0.01" name="signed_quantity" class="input-field" placeholder="Signed qty (adj)">
-                <input name="notes" class="input-field" placeholder="Notes">
-                <button class="btn-primary">Apply</button>
+                <input type="number" step="0.01" min="0.01" name="quantity" class="input-field" placeholder="Qty ({{ $item->ingredient?->unit }})" required aria-label="Quantity">
+                <select name="direction" class="input-field" x-show="action === 'adjustment'" :disabled="action !== 'adjustment'" aria-label="Correction direction">
+                    <option value="add">Add to stock</option>
+                    <option value="remove">Remove from stock</option>
+                </select>
+                <span x-show="action !== 'adjustment'" class="hidden sm:block"></span>
+                <input name="notes" maxlength="500" class="input-field" :placeholder="['waste', 'adjustment'].includes(action) ? 'Reason (required)' : 'Note (optional)'" :required="['waste', 'adjustment'].includes(action)" aria-label="Reason">
+                <button type="submit" class="btn-primary">Apply</button>
             </form>
         </div>
     @empty

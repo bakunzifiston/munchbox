@@ -16,7 +16,7 @@ class DeliveryController extends Controller
     public function index(): View
     {
         $deliveries = Delivery::query()
-            ->with('order')
+            ->with('order.latestPayment')
             ->whereHas('order', fn ($q) => $q->where('fulfillment_type', FulfillmentType::Delivery)
                 ->whereNotIn('status', [OrderStatus::Cancelled, OrderStatus::Rejected, OrderStatus::Delivered]))
             ->latest()
@@ -61,11 +61,15 @@ class DeliveryController extends Controller
             'driver_phone' => ['nullable', 'string', 'max:30'],
             'estimated_minutes' => ['nullable', 'integer', 'min:5', 'max:240'],
             'notes' => ['nullable', 'string', 'max:500'],
-            'status' => ['nullable', 'string', 'max:50'],
         ]);
+
+        // Delivery status follows the order's status workflow, so it isn't editable here.
+        if ($delivery->order && $delivery->order->status->isTerminal()) {
+            return back()->with('error', 'This order is already finished, so its delivery can’t be changed.');
+        }
 
         $delivery->update($data);
 
-        return back()->with('success', 'Delivery updated.');
+        return back()->with('success', 'Delivery details saved.');
     }
 }

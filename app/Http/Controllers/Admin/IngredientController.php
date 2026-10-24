@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\InventoryItem;
 use App\Models\ProductOption;
+use App\Services\SalesMetrics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +21,15 @@ class IngredientController extends Controller
             ->orderBy('name')
             ->paginate(20);
 
-        $all = Ingredient::query()->with('inventoryItem')->get();
-        $lowStock = $all->filter(fn (Ingredient $ingredient) => $ingredient->inventoryItem?->isLowStock())->count();
+        $total = Ingredient::query()->count();
+        $active = Ingredient::query()->active()->count();
+        $lowStock = app(SalesMetrics::class)->stockAlertCount();
 
         $kpis = [
-            ['label' => 'Ingredients', 'value' => $all->count(), 'hint' => 'In catalog'],
-            ['label' => 'Active', 'value' => $all->where('is_active', true)->count(), 'hint' => 'Usable on menu', 'tone' => 'success'],
-            ['label' => 'Low stock', 'value' => $lowStock, 'hint' => 'At or below threshold', 'tone' => $lowStock > 0 ? 'warn' : 'default'],
-            ['label' => 'Inactive', 'value' => $all->where('is_active', false)->count(), 'hint' => 'Hidden from options'],
+            ['label' => 'Ingredients', 'value' => $total, 'hint' => 'In catalog'],
+            ['label' => 'Active', 'value' => $active, 'hint' => 'Usable on menu', 'tone' => 'success'],
+            ['label' => 'Low stock', 'value' => $lowStock, 'hint' => 'At or below minimum', 'tone' => $lowStock > 0 ? 'warn' : 'default'],
+            ['label' => 'Inactive', 'value' => $total - $active, 'hint' => 'Hidden from options'],
         ];
 
         return view('admin.ingredients.index', compact('ingredients', 'kpis'));
@@ -96,6 +98,13 @@ class IngredientController extends Controller
 
     public function destroy(Ingredient $ingredient): RedirectResponse
     {
+        // Keep the stock history: ingredients that have moved stock can only be deactivated.
+        if ($ingredient->inventoryItem?->movements()->exists()) {
+            $ingredient->update(['is_active' => false]);
+
+            return back()->with('success', "{$ingredient->name} has stock history, so it was deactivated instead of deleted.");
+        }
+
         DB::transaction(function () use ($ingredient) {
             $ingredient->products()->detach();
             $ingredient->productOptions()->detach();

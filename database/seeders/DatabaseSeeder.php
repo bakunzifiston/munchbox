@@ -409,7 +409,7 @@ class DatabaseSeeder extends Seeder
                 'price' => 3000,
                 'category' => $sides,
                 'featured' => false,
-                'description' => 'Crispy fries paired with a chilled soda — the perfect combo add-on.',
+                'description' => 'Crispy fries paired with a chilled soda.',
                 'defaults' => [],
                 'image' => 'images/sandwiches/fries.jpg',
                 'sort' => 6,

@@ -13,7 +13,8 @@
 </p>
 
 <div class="grid gap-6 xl:grid-cols-3">
-    <form method="POST" action="{{ route('admin.ingredients.store') }}" class="h-fit space-y-3 rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
+    @can('manage-catalog')
+    <form id="add-ingredient" method="POST" action="{{ route('admin.ingredients.store') }}" class="h-fit scroll-mt-20 space-y-3 rounded-[28px] border border-munch/10 bg-white p-5 shadow-sm">
         @csrf
         <h2 class="text-lg font-extrabold text-munch">Add ingredient</h2>
         <div>
@@ -43,6 +44,7 @@
         <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', true))> Active</label>
         <button class="btn-primary w-full">Create</button>
     </form>
+    @endcan
 
     <div class="space-y-3 xl:col-span-2">
         @forelse($ingredients as $ingredient)
@@ -51,6 +53,7 @@
                 <form method="POST" action="{{ route('admin.ingredients.update', $ingredient) }}">
                     @csrf
                     @method('PATCH')
+                    <fieldset @cannot('manage-catalog') disabled @endcannot>
                     <div class="grid gap-3 sm:grid-cols-12 sm:items-end">
                         <div class="sm:col-span-4">
                             <label class="label-field">Name</label>
@@ -65,7 +68,7 @@
                             <input name="unit" class="input-field" value="{{ $ingredient->unit }}" required>
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="label-field">Threshold</label>
+                            <label class="label-field">Minimum stock</label>
                             <input type="number" step="0.01" name="low_stock_threshold" class="input-field"
                                    value="{{ $ingredient->inventoryItem?->low_stock_threshold ?? 10 }}">
                         </div>
@@ -85,17 +88,22 @@
                             @endif
                             <label class="font-semibold text-ink/70"><input type="checkbox" name="is_active" value="1" @checked($ingredient->is_active)> Active</label>
                         </div>
-                        <button class="btn-secondary !px-3 text-xs">Save</button>
+                        @can('manage-catalog')
+                            <button class="btn-secondary !px-3 text-xs">Save</button>
+                        @endcan
                     </div>
+                    </fieldset>
                 </form>
+                @can('manage-catalog')
                 <form method="POST" action="{{ route('admin.ingredients.destroy', $ingredient) }}" class="mt-2 flex justify-end"
-                      onsubmit="return confirm('Delete {{ addslashes($ingredient->name) }}? This also removes its inventory record.')">
+                      data-confirm="Delete {{ $ingredient->name }}? If it has stock history it will be deactivated instead, so the history is kept.">
                     @csrf
                     @method('DELETE')
                     <button class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100">
                         Delete
                     </button>
                 </form>
+                @endcan
             </div>
         @empty
             <x-admin.empty-state

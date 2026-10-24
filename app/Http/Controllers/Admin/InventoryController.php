@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Services\InventoryService;
+use App\Services\SalesMetrics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,7 +23,7 @@ class InventoryController extends Controller
             ->select('inventory_items.*')
             ->paginate(20);
 
-        $lowStock = InventoryItem::query()->with('ingredient')->lowStock()->get();
+        $lowStock = app(SalesMetrics::class)->stockAlerts();
         $totalItems = InventoryItem::query()->count();
         $stockValue = (float) InventoryItem::query()
             ->selectRaw('COALESCE(SUM(quantity_on_hand * unit_cost), 0) as value')
@@ -57,9 +58,12 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'action' => ['required', 'in:receive,use,waste,adjustment'],
-            'quantity' => ['required', 'numeric', 'min:0.01'],
-            'notes' => ['nullable', 'string', 'max:500'],
-            'signed_quantity' => ['nullable', 'numeric'],
+            'quantity' => ['required', 'numeric', 'min:0.01', 'max:100000'],
+            'direction' => ['required_if:action,adjustment', 'nullable', 'in:add,remove'],
+            'notes' => ['required_if:action,waste,adjustment', 'nullable', 'string', 'max:500'],
+        ], [
+            'notes.required_if' => 'Please give a reason for waste or stock corrections.',
+            'direction.required_if' => 'Choose whether the correction adds or removes stock.',
         ]);
 
         try {
@@ -69,12 +73,12 @@ class InventoryController extends Controller
                 'waste' => $this->inventory->waste($item, (float) $data['quantity'], $request->user(), $data['notes'] ?? null),
                 'adjustment' => $this->inventory->manualAdjustment(
                     $item,
-                    (float) ($data['signed_quantity'] ?? $data['quantity']),
+                    ($data['direction'] === 'remove' ? -1 : 1) * (float) $data['quantity'],
                     $request->user(),
-                    $data['notes'] ?? null
+                    $data['notes']
                 ),
             };
-        } catch (\Throwable $e) {
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 

@@ -68,6 +68,12 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | Timestamps are stored in UTC (above). Business days, reports and every
+    | time shown to staff and customers use this timezone instead.
+    */
+    'business_timezone' => env('BUSINESS_TIMEZONE', 'Africa/Kigali'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

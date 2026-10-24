@@ -63,9 +63,9 @@ class OrderController extends Controller
         return view('customer.orders.track', compact('order'));
     }
 
-    public function cancel(Order $order): RedirectResponse
+    public function cancel(Request $request, Order $order): RedirectResponse
     {
-        $this->authorizeView($order, request());
+        abort_unless($order->user_id !== null && $order->user_id === $request->user()->id, 403);
 
         if ($order->status !== OrderStatus::Pending) {
             return back()->with('error', 'Only pending orders can be cancelled.');
@@ -89,7 +89,7 @@ class OrderController extends Controller
         }
 
         return Order::query()
-            ->with(['items', 'statusHistories', 'delivery'])
+            ->with(['items.options', 'statusHistories', 'delivery', 'payments'])
             ->whereRaw('UPPER(order_number) = ?', [$normalized])
             ->get()
             ->first(fn (Order $order) => Phone::matches($order->customer_phone, $phone));

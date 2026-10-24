@@ -38,24 +38,34 @@
             @csrf @method('PATCH')
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <p class="font-mono font-bold text-munch">{{ $delivery->order->order_number }}</p>
+                    <a href="{{ route('admin.orders.show', $delivery->order) }}" class="font-mono font-bold text-munch hover:text-box">{{ $delivery->order->order_number }}</a>
                     <p class="mt-1 text-sm text-ink/60">{{ $delivery->fullAddress() }}</p>
-                    <p class="mt-1 text-xs text-ink/40">{{ $delivery->order->customer_name }} · {{ $delivery->order->customer_phone }}</p>
+                    <p class="mt-1 text-xs text-ink/50">{{ $delivery->order->customer_name }} · <a href="tel:{{ preg_replace('/[^0-9+]/', '', $delivery->order->customer_phone) }}" class="hover:text-box">{{ $delivery->order->customer_phone }}</a></p>
+                    <p class="mt-1 text-xs text-ink/50">
+                        Placed {{ $delivery->order->created_at->format('d M, H:i') }}
+                        @if($delivery->order->out_for_delivery_at) · dispatched {{ $delivery->order->out_for_delivery_at->format('H:i') }} @endif
+                        · fee {{ \App\Support\Money::format($delivery->order->delivery_fee) }}
+                        · {{ $delivery->order->latestPayment?->method->label() }} ({{ $delivery->order->latestPayment?->status->label() }})
+                    </p>
                 </div>
                 <x-admin.status-badge :status="$delivery->order->status" />
             </div>
-            <div class="mt-4 grid gap-3 sm:grid-cols-4">
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <div>
-                    <label class="label-field">Driver name</label>
+                    <label class="label-field">Rider name</label>
                     <input name="driver_name" value="{{ $delivery->driver_name }}" class="input-field" placeholder="Driver name">
                 </div>
                 <div>
-                    <label class="label-field">Driver phone</label>
+                    <label class="label-field">Rider phone</label>
                     <input name="driver_phone" value="{{ $delivery->driver_phone }}" class="input-field" placeholder="Driver phone">
                 </div>
                 <div>
                     <label class="label-field">ETA (min)</label>
-                    <input type="number" name="estimated_minutes" value="{{ $delivery->estimated_minutes }}" class="input-field" placeholder="45">
+                    <input type="number" min="5" max="240" name="estimated_minutes" value="{{ $delivery->estimated_minutes }}" class="input-field" placeholder="45">
+                </div>
+                <div>
+                    <label class="label-field">Notes</label>
+                    <input name="notes" maxlength="500" value="{{ $delivery->notes }}" class="input-field" placeholder="Gate code, call on arrival…">
                 </div>
                 <div class="flex items-end">
                     <button class="btn-primary w-full">Save</button>

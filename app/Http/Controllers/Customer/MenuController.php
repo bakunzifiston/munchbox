@@ -2,31 +2,30 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\OptionType;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
-use Illuminate\Http\Request;
+use App\Services\MenuPricing;
 use Illuminate\View\View;
 
 class MenuController extends Controller
 {
-    public function index(Request $request): View
+    public function __construct(private readonly MenuPricing $pricing) {}
+
+    public function index(): View
     {
         $categories = Category::query()
             ->active()
-            ->with(['products' => fn ($q) => $q->active()->orderBy('sort_order')])
+            ->with(['products' => fn ($q) => $q->active()->orderBy('sort_order')->with('optionGroups')])
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            ->filter(fn (Category $category) => $category->products->isNotEmpty())
+            ->values();
 
-        $activeSlug = $request->string('category')->toString();
-
-        $extras = Product::query()
-            ->active()
-            ->whereHas('category', fn ($q) => $q->where('slug', 'sides-combos'))
-            ->orderBy('sort_order')
-            ->get();
-
-        return view('customer.menu.index', compact('categories', 'activeSlug', 'extras'));
+        return view('customer.menu.index', [
+            'categories' => $categories,
+        ]);
     }
 
     public function show(string $slug): View
@@ -40,35 +39,29 @@ class MenuController extends Controller
             ->where('slug', $slug)
             ->firstOrFail();
 
-        $defaultNames = config('menu.defaults.'.$product->slug, []);
-        $defaultOptionIds = [];
+        $includedIds = $this->pricing->includedOptionIds($product);
 
-        if ($defaultNames) {
-            foreach ($product->optionGroups as $group) {
-                foreach ($group->activeOptions as $option) {
-                    if (in_array($option->name, $defaultNames, true)) {
-                        $defaultOptionIds[] = $option->id;
-                    }
-                }
-            }
-        } else {
-            foreach ($product->optionGroups as $group) {
-                foreach ($group->activeOptions as $option) {
-                    if ($option->is_default) {
-                        $defaultOptionIds[] = $option->id;
-                    }
-                }
-            }
-        }
+        $charges = $product->optionGroups
+            ->flatMap(fn ($group) => $group->activeOptions)
+            ->mapWithKeys(fn ($option) => [$option->id => $this->pricing->chargeFor($option, $includedIds)]);
+
+        $selectedIds = collect(old('options', []))->flatten()->map(fn ($id) => (int) $id)->all() ?: $includedIds;
 
         $related = Product::query()
             ->active()
-            ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
+            ->orderByRaw('category_id = ? desc', [$product->category_id])
             ->orderBy('sort_order')
             ->limit(3)
             ->get();
 
-        return view('customer.menu.show', compact('product', 'related', 'defaultOptionIds'));
+        return view('customer.menu.show', [
+            'product' => $product,
+            'related' => $related,
+            'includedIds' => $includedIds,
+            'selectedIds' => $selectedIds,
+            'charges' => $charges,
+            'servedFreshOrToasted' => $product->optionGroups->contains(fn ($group) => $group->type === OptionType::Style),
+        ]);
     }
 }

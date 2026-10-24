@@ -15,7 +15,7 @@
                         <p class="mt-1 text-sm text-ink/60">{{ $order->created_at->format('d M Y, H:i') }} · {{ $order->items->count() }} item(s)</p>
                     </div>
                     <div class="text-right">
-                        <span class="badge bg-sage text-munch">{{ $order->status->label() }}</span>
+                        <span class="badge bg-sage text-munch">{{ $order->status->customerLabel($order->fulfillment_type) }}</span>
                         <p class="mt-2 font-bold text-munch">{{ $order->formattedTotal() }}</p>
                     </div>
                 </div>
@@ -23,7 +23,7 @@
         @empty
             <div class="card-surface p-10 text-center">
                 <p class="font-display text-2xl text-munch">No orders yet</p>
-                <a href="{{ route('menu.index') }}" class="btn-primary mt-4">Start ordering</a>
+                <a href="{{ route('home') }}" class="btn-primary mt-4">Start ordering</a>
             </div>
         @endforelse
     </div>
