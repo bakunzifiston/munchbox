@@ -43,6 +43,8 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            // Serve uploads through Laravel when the public/storage symlink is missing on the host.
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],
