@@ -27,7 +27,7 @@
     <div class="grid gap-4 sm:grid-cols-2">
         <div>
             <label class="label-field">Base price (RWF)</label>
-            <input type="number" name="base_price" value="{{ old('base_price', $product->base_price) }}" class="input-field" required min="0" step="100">
+            <input type="number" name="base_price" value="{{ old('base_price', $product->base_price) }}" class="input-field" required min="0" step="any">
         </div>
         <div>
             <label class="label-field">Sort order</label>

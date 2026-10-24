@@ -173,6 +173,16 @@
                 @if(session('error'))
                     <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-900">{{ session('error') }}</div>
                 @endif
+                @if($errors->any())
+                    <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-900">
+                        <p>Changes were not saved:</p>
+                        <ul class="mt-1 list-disc pl-5">
+                            @foreach($errors->all() as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
                 @yield('content')
             </div>

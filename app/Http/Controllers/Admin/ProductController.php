@@ -46,7 +46,7 @@ class ProductController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-        $data['slug'] = Str::slug($data['name']);
+        $data['slug'] = $this->uniqueSlug($data['name']);
         $data['image'] = $this->storeImage($request->file('image'));
 
         $product = Product::query()->create($data);
@@ -69,7 +69,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product): RedirectResponse
     {
         $data = $this->validated($request);
-        $data['slug'] = Str::slug($data['name']);
+        $data['slug'] = $this->uniqueSlug($data['name'], $product);
 
         if ($request->boolean('remove_image') && ! $request->hasFile('image')) {
             $this->deleteStoredImage($product->image);
@@ -120,6 +120,19 @@ class ProductController extends Controller
         unset($data['remove_image']);
 
         return $data;
+    }
+
+    private function uniqueSlug(string $name, ?Product $ignore = null): string
+    {
+        $base = Str::slug($name) ?: 'product';
+        $slug = $base;
+        $i = 2;
+
+        while (Product::query()->where('slug', $slug)->when($ignore, fn ($q) => $q->whereKeyNot($ignore->getKey()))->exists()) {
+            $slug = $base.'-'.$i++;
+        }
+
+        return $slug;
     }
 
     private function storeImage(?UploadedFile $file): ?string
