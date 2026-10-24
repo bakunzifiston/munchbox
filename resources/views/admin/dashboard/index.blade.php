@@ -2,336 +2,198 @@
 
 @section('title', 'Dashboard')
 @section('heading', 'Dashboard')
-@section('subheading', 'Today’s kitchen & delivery pulse')
+@section('subheading', \App\Support\BusinessTime::now()->format('l, d M Y').' · Kigali time')
 
-@section('content')
 @php
-    $trend = function (?float $change) {
-        if ($change === null) {
-            return ['label' => 'vs yesterday', 'class' => 'text-ink/40', 'prefix' => ''];
-        }
-        if ($change > 0) {
-            return ['label' => '+'.$change.'% vs yesterday', 'class' => 'text-emerald-700', 'prefix' => '↑'];
-        }
-        if ($change < 0) {
-            return ['label' => $change.'% vs yesterday', 'class' => 'text-rose-700', 'prefix' => '↓'];
-        }
-        return ['label' => 'No change vs yesterday', 'class' => 'text-ink/40', 'prefix' => ''];
-    };
-    $ordersTrend = $trend($orders_today_change);
-    $revenueTrend = $trend($revenue_today_change);
+    use App\Support\Money;
+
+    $points = $series['points'];
+    $metricKey = $canSeeMoney ? 'booked' : 'orders';
+    $maxValue = max(1, ...array_column($points, $metricKey));
+    $hasData = array_sum(array_column($points, 'orders')) > 0;
+    $labelEvery = count($points) > 14 ? 5 : (count($points) > 8 ? 3 : 1);
 @endphp
 
-{{-- Quick actions --}}
-<div class="mb-6 flex flex-wrap gap-2">
-    <a href="{{ route('admin.orders.index') }}" class="inline-flex items-center gap-2 rounded-full bg-munch px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-munch-deep">
-        Create Order
+@section('content')
+{{-- Quick actions: each is shown only to people allowed to use it. --}}
+<div class="mb-5 flex flex-wrap gap-2">
+    @can('manage-orders')
+        <a href="{{ route('admin.orders.create') }}" class="quick-action">@include('layouts.partials.admin-icon', ['name' => 'orders']) Create order</a>
+    @endcan
+    @can('manage-catalog')
+        <a href="{{ route('admin.products.create') }}" class="quick-action">@include('layouts.partials.admin-icon', ['name' => 'products']) Add product</a>
+        <a href="{{ route('admin.ingredients.index') }}#add-ingredient" class="quick-action">@include('layouts.partials.admin-icon', ['name' => 'ingredients']) Add ingredient</a>
+    @endcan
+    @can('manage-stock')
+        <a href="{{ route('admin.inventory.index') }}" class="quick-action">@include('layouts.partials.admin-icon', ['name' => 'inventory']) Manage inventory</a>
+    @endcan
+    @can('view-financials')
+        <a href="{{ route('admin.reports.index') }}" class="quick-action">@include('layouts.partials.admin-icon', ['name' => 'reports']) View reports</a>
+    @endcan
+    <a href="{{ route('home') }}" target="_blank" rel="noopener" class="quick-action">Open storefront ↗</a>
+</div>
+
+{{-- Today --}}
+<div class="grid gap-3 sm:grid-cols-2 {{ $canSeeMoney ? 'xl:grid-cols-5' : 'xl:grid-cols-4' }}">
+    <div class="stat-card">
+        <p class="stat-label">Orders today</p>
+        <p class="stat-value">{{ $today['orders'] }}</p>
+        <x-admin.change :change="$ordersChange" class="mt-1" />
+    </div>
+
+    <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="stat-card group hover:ring-amber-300">
+        <p class="stat-label">Pending</p>
+        <p class="stat-value {{ $pendingCount > 0 ? 'text-amber-700' : '' }}">{{ $pendingCount }}</p>
+        <p class="mt-1 text-xs text-ink/50">Waiting to be confirmed · <span class="font-bold text-box group-hover:underline">Review</span></p>
     </a>
-    <a href="{{ route('admin.products.create') }}" class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-munch ring-1 ring-munch/10 transition hover:ring-box/30">Add Product</a>
-    <a href="{{ route('admin.ingredients.index') }}" class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-munch ring-1 ring-munch/10 transition hover:ring-box/30">Add Ingredient</a>
-    <a href="{{ route('admin.inventory.index') }}" class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-munch ring-1 ring-munch/10 transition hover:ring-box/30">Manage Inventory</a>
-    <a href="{{ route('admin.reports.index') }}" class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-munch ring-1 ring-munch/10 transition hover:ring-box/30">View Reports</a>
+
+    <a href="{{ route('admin.orders.index', ['status' => 'in_progress']) }}" class="stat-card group">
+        <p class="stat-label">In progress</p>
+        <p class="stat-value">{{ $inProgressCount }}</p>
+        <p class="mt-1 text-xs text-ink/50">Confirmed → out for delivery · {{ $deliveredToday }} completed today</p>
+    </a>
+
+    @if($canSeeMoney)
+        <div class="stat-card">
+            <p class="stat-label" title="Totals of today’s orders, excluding cancelled and rejected">Booked sales today</p>
+            <p class="stat-value">{{ Money::format($today['booked']) }}</p>
+            <x-admin.change :change="$bookedChange" money class="mt-1" />
+        </div>
+        <div class="stat-card">
+            <p class="stat-label" title="Payments marked as paid today">Collected today</p>
+            <p class="stat-value">{{ Money::format($today['collected']) }}</p>
+            <x-admin.change :change="$collectedChange" money class="mt-1" />
+        </div>
+    @else
+        <a href="{{ route('admin.inventory.index') }}" class="stat-card">
+            <p class="stat-label">Stock alerts</p>
+            <p class="stat-value {{ $stockAlertCount > 0 ? 'text-rose-700' : '' }}">{{ $stockAlertCount }}</p>
+            <p class="mt-1 text-xs text-ink/50">At or below minimum</p>
+        </a>
+    @endif
 </div>
 
-{{-- KPI cards --}}
-<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <div class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-ink/40">Today’s orders</p>
-                <p class="mt-2 text-3xl font-extrabold tracking-tight text-munch">{{ $orders_today }}</p>
-            </div>
-            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-sage text-munch">
-                @include('layouts.partials.admin-icon', ['name' => 'orders', 'class' => 'h-5 w-5'])
-            </span>
-        </div>
-        <p class="mt-3 text-xs text-ink/45">Orders placed today</p>
-        <p class="mt-1 text-xs font-semibold {{ $ordersTrend['class'] }}">{{ $ordersTrend['prefix'] }} {{ $ordersTrend['label'] }}</p>
-    </div>
-
-    <div class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-ink/40">Pending</p>
-                <p class="mt-2 text-3xl font-extrabold tracking-tight text-munch">{{ $pending_orders }}</p>
-            </div>
-            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
-            </span>
-        </div>
-        <p class="mt-3 text-xs text-ink/45">Awaiting confirmation</p>
-        <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="mt-1 inline-block text-xs font-bold text-box hover:underline">Review now →</a>
-    </div>
-
-    <div class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-ink/40">Active</p>
-                <p class="mt-2 text-3xl font-extrabold tracking-tight text-munch">{{ $active_orders }}</p>
-            </div>
-            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
-                @include('layouts.partials.admin-icon', ['name' => 'delivery', 'class' => 'h-5 w-5'])
-            </span>
-        </div>
-        <p class="mt-3 text-xs text-ink/45">In kitchen or delivery</p>
-        <p class="mt-1 text-xs font-semibold text-ink/40">{{ $completed_today }} delivered today</p>
-    </div>
-
-    <div class="rounded-[24px] bg-munch p-5 text-white shadow-[0_18px_40px_-28px_rgba(16,48,24,0.55)]">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-white/50">Today’s revenue</p>
-                <p class="mt-2 text-3xl font-extrabold tracking-tight">{{ $revenue_today_formatted }}</p>
-            </div>
-            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-box text-white">
-                @include('layouts.partials.admin-icon', ['name' => 'reports', 'class' => 'h-5 w-5'])
-            </span>
-        </div>
-        <p class="mt-3 text-xs text-white/55">Excludes cancelled / rejected</p>
-        <p class="mt-1 text-xs font-semibold {{ str_contains($revenueTrend['class'], 'emerald') ? 'text-emerald-300' : (str_contains($revenueTrend['class'], 'rose') ? 'text-rose-300' : 'text-white/45') }}">
-            {{ $revenueTrend['prefix'] }} {{ $revenueTrend['label'] }}
-        </p>
-    </div>
-</div>
-
-<div class="mt-6 grid gap-6 xl:grid-cols-3">
-    {{-- Sales chart --}}
-    <section class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5 xl:col-span-2">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h2 class="text-lg font-extrabold text-munch">Sales overview</h2>
-                <p class="text-sm text-ink/45">
-                    {{ number_format($chart['total_orders']) }} orders · {{ \App\Support\Money::format($chart['total_revenue']) }}
-                </p>
-            </div>
-            <div class="flex rounded-full bg-[#F6F4EF] p-1 text-xs font-bold">
-                @foreach(['today' => 'Today', '7d' => '7 days', '30d' => '30 days'] as $key => $label)
-                    <a href="{{ route('admin.dashboard', ['range' => $key]) }}"
-                       class="rounded-full px-3 py-1.5 transition {{ $chart_range === $key ? 'bg-white text-munch shadow-sm' : 'text-ink/45 hover:text-munch' }}">
-                        {{ $label }}
-                    </a>
+<div class="mt-5 grid gap-5 xl:grid-cols-3">
+    {{-- Sales overview --}}
+    <x-admin.panel class="xl:col-span-2" :title="$canSeeMoney ? 'Sales overview' : 'Order volume'" :subtitle="$series['from']->format('d M').($series['range'] === 'today' ? '' : ' – '.$series['to']->format('d M')).' · cancelled and rejected orders excluded'">
+        <x-slot:actions>
+            <nav class="flex rounded-full bg-[#F6F4EF] p-1 text-xs font-bold" aria-label="Period">
+                @foreach($ranges as $key => $label)
+                    <a href="{{ route('admin.dashboard', ['range' => $key]) }}" class="rounded-full px-3 py-1.5 transition {{ $series['range'] === $key ? 'bg-white text-munch shadow-sm' : 'text-ink/50 hover:text-munch' }}" @if($series['range'] === $key) aria-current="true" @endif>{{ $label }}</a>
                 @endforeach
-            </div>
-        </div>
+            </nav>
+        </x-slot:actions>
 
-        @if($chart['total_orders'] === 0)
-            <x-admin.empty-state
-                title="No sales in this period"
-                description="Once orders start coming in, revenue and order trends will appear here."
-                :action-url="route('home')"
-                action-label="Open storefront"
-            >
-                <x-slot:icon>
-                    @include('layouts.partials.admin-icon', ['name' => 'reports', 'class' => 'h-6 w-6'])
-                </x-slot:icon>
-            </x-admin.empty-state>
+        <dl class="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <div><dt class="stat-label">Orders</dt><dd class="text-lg font-extrabold text-munch">{{ $seriesSummary['sales_orders'] }}</dd></div>
+            @if($canSeeMoney)
+                <div><dt class="stat-label">Booked</dt><dd class="text-lg font-extrabold text-munch">{{ Money::format($seriesSummary['booked']) }}</dd></div>
+                <div><dt class="stat-label">Collected</dt><dd class="text-lg font-extrabold text-munch">{{ Money::format($seriesSummary['collected']) }}</dd></div>
+                <div><dt class="stat-label">Average order</dt><dd class="text-lg font-extrabold text-munch">{{ $seriesSummary['average'] !== null ? Money::format($seriesSummary['average']) : '—' }}</dd></div>
+            @endif
+        </dl>
+
+        @if(! $hasData)
+            <x-admin.empty-state title="No orders in this period" description="Orders will appear here as soon as customers start ordering." class="!py-10" />
         @else
-            <div class="grid gap-6 lg:grid-cols-2">
-                <div>
-                    <p class="mb-3 text-xs font-bold uppercase tracking-wider text-ink/40">Revenue</p>
-                    <div class="flex h-40 items-end gap-1.5 sm:gap-2">
-                        @foreach($chart['revenue'] as $i => $value)
-                            @php $height = max(8, ($value / $chart['max_revenue']) * 100); @endphp
-                            <div class="group relative flex flex-1 flex-col items-center justify-end">
-                                <div class="pointer-events-none absolute -top-7 hidden rounded-md bg-munch px-2 py-1 text-[10px] font-bold text-white group-hover:block">
-                                    {{ number_format($value) }}
-                                </div>
-                                <div class="w-full rounded-t-lg bg-gradient-to-t from-munch to-box/80 transition group-hover:opacity-90" style="height: {{ $height }}%"></div>
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="mt-2 flex gap-1.5 sm:gap-2">
-                        @foreach($chart['labels'] as $label)
-                            <span class="flex-1 truncate text-center text-[9px] font-medium text-ink/35 sm:text-[10px]">{{ $label }}</span>
-                        @endforeach
-                    </div>
-                </div>
-                <div>
-                    <p class="mb-3 text-xs font-bold uppercase tracking-wider text-ink/40">Orders</p>
-                    <div class="flex h-40 items-end gap-1.5 sm:gap-2">
-                        @foreach($chart['orders'] as $i => $value)
-                            @php $height = max(8, ($value / $chart['max_orders']) * 100); @endphp
-                            <div class="group relative flex flex-1 flex-col items-center justify-end">
-                                <div class="pointer-events-none absolute -top-7 hidden rounded-md bg-box px-2 py-1 text-[10px] font-bold text-white group-hover:block">
-                                    {{ $value }}
-                                </div>
-                                <div class="w-full rounded-t-lg bg-box/80 transition group-hover:bg-box" style="height: {{ $height }}%"></div>
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="mt-2 flex gap-1.5 sm:gap-2">
-                        @foreach($chart['labels'] as $label)
-                            <span class="flex-1 truncate text-center text-[9px] font-medium text-ink/35 sm:text-[10px]">{{ $label }}</span>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endif
-    </section>
-
-    {{-- Inventory alerts --}}
-    <section class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5">
-        <div class="mb-4 flex items-center justify-between">
-            <div>
-                <h2 class="text-lg font-extrabold text-munch">Inventory alerts</h2>
-                <p class="text-sm text-ink/45">
-                    @if($critical_stock_count > 0)
-                        {{ $critical_stock_count }} critical · {{ $low_stock->count() }} low
-                    @else
-                        Stock health check
-                    @endif
-                </p>
-            </div>
-            <a href="{{ route('admin.inventory.index') }}" class="text-xs font-bold text-box hover:underline">Manage</a>
-        </div>
-
-        @forelse($low_stock as $item)
-            @php
-                $qty = (float) $item->quantity_on_hand;
-                $min = (float) $item->low_stock_threshold;
-                $critical = $qty <= ($min / 2);
-            @endphp
-            <div class="mb-3 rounded-2xl border px-3 py-3 {{ $critical ? 'border-rose-200 bg-rose-50' : 'border-amber-200 bg-amber-50' }}">
-                <div class="flex items-start justify-between gap-2">
-                    <div>
-                        <p class="text-sm font-bold {{ $critical ? 'text-rose-950' : 'text-amber-950' }}">{{ $item->ingredient->name }}</p>
-                        <p class="mt-0.5 text-xs {{ $critical ? 'text-rose-800/70' : 'text-amber-800/70' }}">
-                            Min {{ rtrim(rtrim(number_format($min, 2), '0'), '.') }} {{ $item->ingredient->unit }}
-                        </p>
-                    </div>
-                    <span class="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide {{ $critical ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white' }}">
-                        {{ $critical ? 'Critical' : 'Low' }}
-                    </span>
-                </div>
-                <p class="mt-2 text-sm font-extrabold {{ $critical ? 'text-rose-950' : 'text-amber-950' }}">
-                    {{ rtrim(rtrim(number_format($qty, 2), '0'), '.') }}
-                    <span class="text-xs font-semibold opacity-70">{{ $item->ingredient->unit }}</span>
-                </p>
-            </div>
-        @empty
-            <x-admin.empty-state
-                class="!py-8"
-                title="Stock looks healthy"
-                description="No ingredients are below their low-stock threshold right now."
-                :action-url="route('admin.inventory.index')"
-                action-label="View inventory"
-            >
-                <x-slot:icon>
-                    @include('layouts.partials.admin-icon', ['name' => 'inventory', 'class' => 'h-6 w-6'])
-                </x-slot:icon>
-            </x-admin.empty-state>
-        @endforelse
-    </section>
-</div>
-
-<div class="mt-6 grid gap-6 xl:grid-cols-3">
-    {{-- Recent orders --}}
-    <section class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5 xl:col-span-2">
-        <div class="mb-4 flex items-center justify-between gap-3">
-            <div>
-                <h2 class="text-lg font-extrabold text-munch">Recent orders</h2>
-                <p class="text-sm text-ink/45">Latest activity across the kitchen</p>
-            </div>
-            <a href="{{ route('admin.orders.index') }}" class="rounded-full bg-sage px-3 py-1.5 text-xs font-bold text-munch transition hover:bg-munch hover:text-white">View all orders</a>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-left text-sm">
-                <thead>
-                    <tr class="border-b border-munch/8 text-[11px] font-bold uppercase tracking-wider text-ink/35">
-                        <th class="pb-3 pr-4">Order</th>
-                        <th class="pb-3 pr-4">Customer</th>
-                        <th class="pb-3 pr-4">Items</th>
-                        <th class="pb-3 pr-4">Type</th>
-                        <th class="pb-3 pr-4">Status</th>
-                        <th class="pb-3 pr-4 text-right">Amount</th>
-                        <th class="pb-3 pl-4 text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-munch/5">
-                    @forelse($recent_orders as $order)
-                        <tr class="align-middle">
-                            <td class="py-3.5 pr-4">
-                                <a href="{{ route('admin.orders.show', $order) }}" class="font-mono text-xs font-bold text-munch hover:text-box">{{ $order->order_number }}</a>
-                                <p class="mt-0.5 text-[11px] text-ink/40">{{ $order->created_at->diffForHumans() }}</p>
-                            </td>
-                            <td class="py-3.5 pr-4">
-                                <p class="font-semibold text-ink">{{ $order->customer_name }}</p>
-                                <p class="text-xs text-ink/40">{{ $order->customer_phone }}</p>
-                            </td>
-                            <td class="py-3.5 pr-4 text-ink/60">{{ $order->items_count }} item{{ $order->items_count === 1 ? '' : 's' }}</td>
-                            <td class="py-3.5 pr-4">
-                                <span class="rounded-full bg-[#F6F4EF] px-2.5 py-1 text-[11px] font-bold text-munch">{{ $order->fulfillment_type->label() }}</span>
-                            </td>
-                            <td class="py-3.5 pr-4">
-                                <x-admin.status-badge :status="$order->status" />
-                            </td>
-                            <td class="py-3.5 pr-4 text-right font-extrabold text-munch">{{ $order->formattedTotal() }}</td>
-                            <td class="py-3.5 pl-4 text-right">
-                                <a href="{{ route('admin.orders.show', $order) }}" class="inline-flex rounded-full bg-munch px-3 py-1.5 text-[11px] font-bold text-white hover:bg-munch-deep">Open</a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7">
-                                <x-admin.empty-state
-                                    title="No orders yet"
-                                    description="When customers place sandwich orders, they’ll show up here for kitchen and delivery tracking."
-                                    :action-url="route('home')"
-                                    action-label="Go to storefront"
-                                >
-                                    <x-slot:icon>
-                                        @include('layouts.partials.admin-icon', ['name' => 'orders', 'class' => 'h-6 w-6'])
-                                    </x-slot:icon>
-                                </x-admin.empty-state>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    {{-- Popular products --}}
-    <section class="rounded-[24px] bg-white p-5 shadow-[0_18px_40px_-28px_rgba(16,48,24,0.45)] ring-1 ring-munch/5">
-        <div class="mb-4 flex items-center justify-between">
-            <div>
-                <h2 class="text-lg font-extrabold text-munch">Popular today</h2>
-                <p class="text-sm text-ink/45">Product performance</p>
-            </div>
-            <a href="{{ route('admin.products.index') }}" class="text-xs font-bold text-box hover:underline">Menu</a>
-        </div>
-
-        <div class="space-y-3">
-            @forelse($popular_products as $item)
-                @php $pct = max(8, ((int) $item->total_qty / $popular_max_qty) * 100); @endphp
-                <div class="rounded-2xl bg-[#F6F4EF]/80 p-3">
-                    <div class="flex items-center gap-3">
-                        <div class="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-cover bg-center ring-1 ring-munch/5"
-                             style="background-image: url('{{ asset($item->image ?: 'images/sandwiches/classic.jpg') }}')"></div>
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-bold text-munch">{{ $item->product_name }}</p>
-                            <p class="text-xs text-ink/45">{{ (int) $item->total_qty }} sold · {{ \App\Support\Money::format($item->revenue) }}</p>
+            <div class="flex h-48 items-end gap-[3px] border-b border-munch/10" role="img" aria-label="{{ $canSeeMoney ? 'Booked sales' : 'Orders' }} per {{ $series['range'] === 'today' ? 'hour' : 'day' }}">
+                @foreach($points as $point)
+                    @php $height = $point[$metricKey] > 0 ? max(3, round($point[$metricKey] / $maxValue * 100)) : 0; @endphp
+                    <div class="group relative flex h-full flex-1 items-end">
+                        <div class="w-full rounded-t {{ $point[$metricKey] > 0 ? 'bg-munch group-hover:bg-box' : '' }}" style="height: {{ $height }}%"></div>
+                        <div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-munch-deep px-2.5 py-1.5 text-[11px] text-white shadow-lg group-hover:block">
+                            <span class="font-bold">{{ $point['label'] }}</span> · {{ $point['orders'] }} {{ Str::plural('order', $point['orders']) }}
+                            @if($canSeeMoney)<br>{{ Money::format($point['booked']) }} booked · {{ Money::format($point['collected']) }} collected @endif
                         </div>
                     </div>
-                    <div class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white">
-                        <div class="h-full rounded-full bg-gradient-to-r from-munch to-box" style="width: {{ $pct }}%"></div>
-                    </div>
+                @endforeach
+            </div>
+            <div class="mt-1.5 flex gap-[3px] text-[10px] text-ink/45">
+                @foreach($points as $i => $point)
+                    <span class="flex-1 truncate text-center">{{ $i % $labelEvery === 0 ? $point['label'] : '' }}</span>
+                @endforeach
+            </div>
+        @endif
+    </x-admin.panel>
+
+    {{-- Stock alerts --}}
+    <x-admin.panel title="Stock alerts" :subtitle="$stockAlertCount ? $stockAlertCount.' at or below minimum' : 'All stock above minimum'">
+        @can('manage-stock')
+            <x-slot:actions><a href="{{ route('admin.inventory.index') }}" class="text-xs font-bold text-box hover:underline">Manage</a></x-slot:actions>
+        @endcan
+        @forelse($stockAlerts as $item)
+            @php $out = (float) $item->quantity_on_hand <= 0; @endphp
+            <div class="flex items-center justify-between gap-3 border-b border-munch/5 py-2.5 last:border-0">
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-bold text-munch">{{ $item->ingredient?->name }}</p>
+                    <p class="text-xs text-ink/50">{{ $item->formattedQuantity() }} left · minimum {{ $item->formattedThreshold() }}</p>
                 </div>
-            @empty
-                <x-admin.empty-state
-                    class="!py-8"
-                    title="No sales yet today"
-                    description="Popular sandwiches will rank here once today’s orders start rolling in."
-                    :action-url="route('admin.products.index')"
-                    action-label="Manage products"
-                >
-                    <x-slot:icon>
-                        @include('layouts.partials.admin-icon', ['name' => 'products', 'class' => 'h-6 w-6'])
-                    </x-slot:icon>
-                </x-admin.empty-state>
-            @endforelse
-        </div>
-    </section>
+                <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold {{ $out ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800' }}">{{ $out ? 'Out' : 'Low' }}</span>
+            </div>
+        @empty
+            <p class="py-6 text-center text-sm text-ink/50">Nothing needs restocking.</p>
+        @endforelse
+    </x-admin.panel>
+</div>
+
+<div class="mt-5 grid gap-5 xl:grid-cols-3">
+    {{-- Recent orders --}}
+    <x-admin.panel class="xl:col-span-2" title="Recent orders">
+        <x-slot:actions><a href="{{ route('admin.orders.index') }}" class="text-xs font-bold text-box hover:underline">View all orders</a></x-slot:actions>
+        @if($recentOrders->isEmpty())
+            <x-admin.empty-state title="No orders yet" description="New orders from the storefront or entered by staff show up here." />
+        @else
+            <div class="-mx-5 overflow-x-auto">
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>Order</th><th>Customer</th><th>Items</th><th>Type</th><th>Status</th><th class="text-right">Total</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach($recentOrders as $order)
+                            <tr>
+                                <td>
+                                    <p class="font-mono text-xs font-bold text-munch">{{ $order->order_number }}</p>
+                                    <p class="text-xs text-ink/45" title="{{ $order->created_at->format('d M Y, H:i') }}">{{ $order->created_at->isToday() ? $order->created_at->format('H:i').' · '.$order->created_at->diffForHumans() : $order->created_at->format('d M, H:i') }}</p>
+                                </td>
+                                <td>
+                                    <p class="font-semibold text-munch">{{ $order->customer_name }}</p>
+                                    <p class="text-xs text-ink/45">{{ $order->customer_phone }}</p>
+                                </td>
+                                <td class="whitespace-nowrap text-ink/70">{{ (int) $order->items_sum_quantity }} {{ Str::plural('unit', (int) $order->items_sum_quantity) }}</td>
+                                <td class="text-ink/70">{{ $order->fulfillment_type->label() }}</td>
+                                <td><x-admin.status-badge :status="$order->status" /></td>
+                                <td class="whitespace-nowrap text-right font-bold text-munch">{{ Money::format($order->total) }}</td>
+                                <td class="text-right"><a href="{{ route('admin.orders.show', $order) }}" class="text-xs font-bold text-box hover:underline">Open</a></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </x-admin.panel>
+
+    {{-- Popular today --}}
+    <x-admin.panel title="Popular today" subtitle="Units sold from today’s orders">
+        @can('manage-catalog')
+            <x-slot:actions><a href="{{ route('admin.products.index') }}" class="text-xs font-bold text-box hover:underline">Manage products</a></x-slot:actions>
+        @endcan
+        @forelse($popular as $row)
+            <div class="flex items-center justify-between gap-3 border-b border-munch/5 py-2.5 last:border-0">
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-bold text-munch">{{ $row->product_name }}</p>
+                    <p class="text-xs text-ink/50">
+                        {{ $row->units }} sold
+                        @if($canSeeMoney) · {{ Money::format($row->sales) }} @endif
+                    </p>
+                </div>
+                @php $delta = $row->units - (int) $row->previous_units; @endphp
+                <span class="shrink-0 text-xs font-semibold {{ $delta > 0 ? 'text-emerald-700' : ($delta < 0 ? 'text-rose-700' : 'text-ink/40') }}" title="Compared with yesterday ({{ (int) $row->previous_units }})">
+                    {{ $delta > 0 ? '+'.$delta : ($delta < 0 ? '−'.abs($delta) : '±0') }} vs yesterday
+                </span>
+            </div>
+        @empty
+            <p class="py-6 text-center text-sm text-ink/50">No sales yet today.</p>
+        @endforelse
+    </x-admin.panel>
 </div>
 @endsection

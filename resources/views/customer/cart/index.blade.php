@@ -3,45 +3,64 @@
 @section('title', 'Cart')
 
 @section('content')
-<div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+@php
+    $belowMinimum = $minOrder > 0 && $subtotal < $minOrder;
+@endphp
+
+<div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+    <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="font-display text-4xl font-bold text-munch">Your cart</h1>
+            <h1 class="text-3xl font-extrabold text-munch sm:text-4xl">Your cart</h1>
             @if($items->isNotEmpty())
-                <p class="mt-2 text-ink/60">
-                    {{ $count }} {{ Str::plural('item', $count) }} · add as many sandwiches as you like
-                </p>
+                <p class="mt-1 text-sm text-ink/60">{{ $count }} {{ Str::plural('item', $count) }}</p>
             @endif
         </div>
         @if($items->isNotEmpty())
-            <a href="{{ route('menu.index') }}" class="btn-secondary inline-flex items-center justify-center gap-2">
-                <span aria-hidden="true">+</span> Add another item
-            </a>
+            <form method="POST" action="{{ route('cart.clear') }}" onsubmit="return confirm('Remove everything from your cart?')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn-ghost text-ink/60 hover:text-red-700">Clear cart</button>
+            </form>
         @endif
     </div>
 
+    @foreach($notices as $notice)
+        <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">{{ $notice }}</div>
+    @endforeach
+
     @if($items->isEmpty())
-        <div class="mt-10 card-surface p-12 text-center">
-            <p class="font-display text-2xl text-munch">Cart is empty</p>
-            <p class="mt-2 text-ink/60">Browse the menu and build your sandwich.</p>
-            <a href="{{ route('menu.index') }}" class="btn-primary mt-6">Browse menu</a>
+        <div class="card-surface mt-8 p-10 text-center sm:p-12">
+            <p class="text-2xl font-extrabold text-munch">Your cart is empty</p>
+            <p class="mt-2 text-ink/60">Pick a sandwich and make it yours.</p>
+            <a href="{{ route('home') }}" class="btn-primary mt-6">Browse the menu</a>
         </div>
     @else
-        <div class="mt-8 space-y-4">
-            @foreach($items as $item)
-                @php
-                    $groupedOptions = collect($item['options'] ?? [])->groupBy('group');
-                @endphp
-                <div class="card-surface p-5">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="flex min-w-0 flex-1 gap-4">
-                            <a href="{{ route('menu.show', $item['slug']) }}" class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-cover bg-center sm:h-24 sm:w-24" style="background-image: url('{{ asset($item['image'] ?: 'images/sandwiches/classic.jpg') }}')"></a>
-                            <div class="min-w-0">
-                                <a href="{{ route('menu.show', $item['slug']) }}" class="font-display text-xl font-semibold text-munch hover:text-box">
-                                    {{ $item['name'] }}
-                                </a>
+        <div class="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_340px]">
+            <ul class="space-y-3">
+                @foreach($items as $item)
+                    @php
+                        $groupedOptions = collect($item['options'] ?? [])->groupBy('group');
+                        $paidExtras = collect($item['options'] ?? [])->filter(fn ($o) => (float) $o['price_adjustment'] > 0);
+                    @endphp
+                    <li class="card-surface p-4 sm:p-5">
+                        <div class="flex gap-4">
+                            <a href="{{ route('menu.show', $item['slug']) }}" class="shrink-0" tabindex="-1" aria-hidden="true">
+                                <x-product-image :image="$item['image']" :name="$item['name']" class="h-20 w-20 rounded-2xl sm:h-24 sm:w-24" />
+                            </a>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-3">
+                                    <a href="{{ route('menu.show', $item['slug']) }}" class="font-extrabold leading-snug text-munch hover:text-box">{{ $item['name'] }}</a>
+                                    <p class="shrink-0 font-extrabold text-munch">{{ \App\Support\Money::format($item['line_total']) }}</p>
+                                </div>
+                                <p class="mt-0.5 text-xs text-ink/50">
+                                    {{ \App\Support\Money::format($item['unit_with_options']) }} each
+                                    @if($paidExtras->isNotEmpty())
+                                        · includes {{ $paidExtras->map(fn ($o) => $o['name'].' +'.\App\Support\Money::format($o['price_adjustment']))->join(', ') }}
+                                    @endif
+                                </p>
+
                                 @if($groupedOptions->isNotEmpty())
-                                    <dl class="mt-2 space-y-1 text-sm text-ink/60">
+                                    <dl class="mt-2 space-y-0.5 text-sm text-ink/60">
                                         @foreach($groupedOptions as $group => $options)
                                             <div>
                                                 <dt class="inline font-semibold text-ink/45">{{ $group }}:</dt>
@@ -50,91 +69,86 @@
                                         @endforeach
                                     </dl>
                                 @endif
-                                @if(!empty($item['notes']))
-                                    <p class="mt-2 text-xs italic text-ink/50">Note: {{ $item['notes'] }}</p>
+                                @if(! empty($item['notes']))
+                                    <p class="mt-2 text-sm italic text-ink/55">“{{ $item['notes'] }}”</p>
                                 @endif
-                                <a href="{{ route('menu.show', $item['slug']) }}" class="mt-3 inline-block text-xs font-bold text-box hover:underline">
-                                    Customize another {{ $item['name'] }} →
-                                </a>
+
+                                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                    <form
+                                        method="POST"
+                                        action="{{ route('cart.update', $item['key']) }}"
+                                        x-data="{ qty: {{ (int) $item['quantity'] }} }"
+                                        x-ref="qtyForm"
+                                    >
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="qty-stepper">
+                                            <button type="button" aria-label="Decrease quantity" :disabled="qty <= 1" @click="qty = Math.max(1, qty - 1); $nextTick(() => $refs.qtyForm.requestSubmit())">−</button>
+                                            <input type="number" name="quantity" x-model.number="qty" value="{{ (int) $item['quantity'] }}" min="1" max="{{ \App\Services\CartService::MAX_QUANTITY }}" aria-label="Quantity" @change="$refs.qtyForm.requestSubmit()">
+                                            <button type="button" aria-label="Increase quantity" :disabled="qty >= {{ \App\Services\CartService::MAX_QUANTITY }}" @click="qty = Math.min({{ \App\Services\CartService::MAX_QUANTITY }}, qty + 1); $nextTick(() => $refs.qtyForm.requestSubmit())">+</button>
+                                        </div>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('cart.destroy', $item['key']) }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex min-h-[44px] items-center text-sm font-semibold text-red-700 hover:underline">Remove</button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
+                    </li>
+                @endforeach
+            </ul>
 
-                        <div class="flex shrink-0 flex-col items-stretch gap-3 sm:items-end">
-                            <p class="text-right text-lg font-bold text-munch">{{ number_format($item['line_total'], 0) }} RWF</p>
-
-                            <form
-                                method="POST"
-                                action="{{ route('cart.update', $item['key']) }}"
-                                class="flex items-center gap-2"
-                                x-data="{ qty: {{ (int) $item['quantity'] }} }"
-                                x-ref="qtyForm"
-                            >
-                                @csrf
-                                @method('PATCH')
-                                <div class="flex items-center overflow-hidden rounded-2xl border border-munch/15 bg-cream/70">
-                                    <button type="button" class="px-3 py-2 text-lg font-bold text-munch hover:bg-munch/5" @click="qty = Math.max(1, qty - 1); $nextTick(() => $refs.qtyForm.requestSubmit())">−</button>
-                                    <input type="number" name="quantity" x-model.number="qty" min="1" max="20" class="w-12 border-0 bg-transparent text-center text-sm font-bold text-munch focus:ring-0" @change="$refs.qtyForm.requestSubmit()">
-                                    <button type="button" class="px-3 py-2 text-lg font-bold text-munch hover:bg-munch/5" @click="qty = Math.min(20, qty + 1); $nextTick(() => $refs.qtyForm.requestSubmit())">+</button>
-                                </div>
-                            </form>
-
-                            <form method="POST" action="{{ route('cart.destroy', $item['key']) }}">
-                                @csrf
-                                @method('DELETE')
-                                <button class="text-xs font-semibold text-red-700 hover:underline">Remove</button>
-                            </form>
-                        </div>
+            <aside class="card-surface p-5 lg:sticky lg:top-24">
+                <h2 class="text-lg font-extrabold text-munch">Order summary</h2>
+                <dl class="mt-4 space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-ink/60">Subtotal</dt>
+                        <dd class="font-bold text-munch">{{ \App\Support\Money::format($subtotal) }}</dd>
                     </div>
-                </div>
-            @endforeach
-        </div>
+                    @if($deliveryFee > 0)
+                        <div class="flex justify-between">
+                            <dt class="text-ink/60">Delivery</dt>
+                            <dd class="text-ink/60">{{ \App\Support\Money::format($deliveryFee) }} <span class="text-xs">(pickup free)</span></dd>
+                        </div>
+                    @endif
+                </dl>
 
-        <div class="mt-6">
-            <a href="{{ route('menu.index') }}" class="flex w-full items-center justify-center gap-3 rounded-[28px] border border-dashed border-munch/20 bg-white/70 px-5 py-5 text-center transition hover:border-box/40 hover:bg-box/5">
-                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-box/10 text-xl font-bold text-box">+</span>
-                <span>
-                    <span class="block font-extrabold text-munch">Want another sandwich?</span>
-                    <span class="block text-sm text-ink/55">Add a different product — your current items stay in the cart</span>
-                </span>
-            </a>
+                @if($belowMinimum)
+                    <p class="mt-4 rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        The minimum order is {{ \App\Support\Money::format($minOrder) }}. Add {{ \App\Support\Money::format($minOrder - $subtotal) }} more to check out.
+                    </p>
+                @endif
+
+                <div class="mt-5 grid gap-2">
+                    @if($belowMinimum)
+                        <button type="button" class="btn-primary w-full" disabled>Proceed to checkout</button>
+                    @else
+                        <a href="{{ route('checkout.create') }}" class="btn-primary w-full">Proceed to checkout</a>
+                    @endif
+                    <a href="{{ route('home') }}" class="btn-secondary w-full">Continue shopping</a>
+                </div>
+            </aside>
         </div>
 
         @if($suggestions->isNotEmpty())
-            <section class="mt-10">
-                <div class="mb-4 flex items-end justify-between gap-3">
-                    <div>
-                        <h2 class="text-2xl font-extrabold text-munch">Add something else</h2>
-                        <p class="mt-1 text-sm text-ink/50">Tap to customize and add to this order</p>
-                    </div>
-                    <a href="{{ route('menu.index') }}" class="text-sm font-bold text-box hover:underline">Full menu</a>
-                </div>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <section class="mt-12">
+                <h2 class="mb-4 text-xl font-extrabold text-munch">Add something else</h2>
+                <div class="grid gap-4 sm:grid-cols-3">
                     @foreach($suggestions as $product)
-                        <a href="{{ route('menu.show', $product->slug) }}" class="card-surface group overflow-hidden transition hover:-translate-y-0.5">
-                            <div class="aspect-[4/3] bg-cover bg-center transition duration-500 group-hover:scale-105" style="background-image: url('{{ asset($product->image ?: 'images/sandwiches/classic.jpg') }}')"></div>
-                            <div class="p-4">
-                                <p class="font-semibold text-munch">{{ $product->name }}</p>
-                                <div class="mt-2 flex items-center justify-between gap-2">
-                                    <span class="text-sm font-bold text-box">{{ $product->formattedPrice() }}</span>
-                                    <span class="text-xs font-bold text-munch/60 group-hover:text-box">Add →</span>
-                                </div>
+                        <a href="{{ route('menu.show', $product->slug) }}" class="menu-card group">
+                            <x-product-image :image="$product->image" :name="$product->name" class="aspect-[16/10]" />
+                            <div class="flex items-start justify-between gap-3 p-4">
+                                <p class="font-bold text-munch">{{ $product->name }}</p>
+                                <p class="shrink-0 text-sm font-bold text-box">{{ $product->formattedPrice() }}</p>
                             </div>
                         </a>
                     @endforeach
                 </div>
             </section>
         @endif
-
-        <div class="mt-8 card-surface sticky bottom-4 z-10 p-6 shadow-lg">
-            <div class="flex items-center justify-between text-sm">
-                <span class="text-ink/60">Subtotal · {{ $count }} {{ Str::plural('item', $count) }}</span>
-                <span class="text-lg font-bold text-munch">{{ number_format($subtotal, 0) }} RWF</span>
-            </div>
-            <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                <a href="{{ route('menu.index') }}" class="btn-secondary w-full text-center">Add more items</a>
-                <a href="{{ route('checkout.create') }}" class="btn-primary w-full text-center">Proceed to checkout</a>
-            </div>
-        </div>
     @endif
 </div>
 @endsection

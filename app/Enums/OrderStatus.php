@@ -27,6 +27,61 @@ enum OrderStatus: string
         };
     }
 
+    /**
+     * Wording shown to customers, which depends on delivery vs pickup.
+     */
+    public function customerLabel(FulfillmentType $fulfillment = FulfillmentType::Delivery): string
+    {
+        $pickup = $fulfillment === FulfillmentType::Pickup;
+
+        return match ($this) {
+            self::Pending => 'Order placed',
+            self::Ready => $pickup ? 'Ready for pickup' : 'Ready for dispatch',
+            self::Delivered => $pickup ? 'Picked up' : 'Delivered',
+            default => $this->label(),
+        };
+    }
+
+    /**
+     * The happy-path steps a customer sees in the order tracker.
+     *
+     * @return list<self>
+     */
+    public static function customerSteps(FulfillmentType $fulfillment): array
+    {
+        return $fulfillment === FulfillmentType::Pickup
+            ? [self::Pending, self::Confirmed, self::Preparing, self::Ready, self::Delivered]
+            : [self::Pending, self::Confirmed, self::Preparing, self::Ready, self::OutForDelivery, self::Delivered];
+    }
+
+    /**
+     * Button text for moving an order into this status.
+     */
+    public function actionLabel(FulfillmentType $fulfillment = FulfillmentType::Delivery): string
+    {
+        return match ($this) {
+            self::Confirmed => 'Confirm order',
+            self::Preparing => 'Start preparing',
+            self::Ready => $fulfillment === FulfillmentType::Pickup ? 'Ready for pickup' : 'Ready for dispatch',
+            self::OutForDelivery => 'Send out for delivery',
+            self::Delivered => $fulfillment === FulfillmentType::Pickup ? 'Mark picked up' : 'Mark delivered',
+            default => $this->label(),
+        };
+    }
+
+    public function timestampColumn(): ?string
+    {
+        return match ($this) {
+            self::Pending => 'created_at',
+            self::Confirmed => 'confirmed_at',
+            self::Preparing => 'preparing_at',
+            self::Ready => 'ready_at',
+            self::OutForDelivery => 'out_for_delivery_at',
+            self::Delivered => 'delivered_at',
+            self::Cancelled, self::Rejected => 'cancelled_at',
+        };
+    }
+
     public function color(): string
     {
         return match ($this) {
@@ -64,7 +119,31 @@ enum OrderStatus: string
         return in_array($status, $this->allowedTransitions(), true);
     }
 
-    /** @return list<self> */
+    /**
+     * Accepted and being prepared or fulfilled (excludes pending and finished orders).
+     *
+     * @return list<self>
+     */
+    public static function inProgress(): array
+    {
+        return [self::Confirmed, self::Preparing, self::Ready, self::OutForDelivery];
+    }
+
+    /**
+     * Orders that count towards sales: everything except cancelled and rejected.
+     *
+     * @return list<string>
+     */
+    public static function excludedFromSales(): array
+    {
+        return [self::Cancelled->value, self::Rejected->value];
+    }
+
+    /**
+     * Open orders: pending or in progress.
+     *
+     * @return list<self>
+     */
     public static function active(): array
     {
         return [

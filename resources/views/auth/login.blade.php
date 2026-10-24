@@ -25,5 +25,6 @@
         </div>
         <button class="btn-primary w-full">Log in</button>
         <p class="text-center text-sm text-ink/60">No account? <a href="{{ route('register') }}" class="font-semibold text-box">Register</a></p>
+        <p class="border-t border-munch/10 pt-4 text-center text-sm text-ink/55">You don’t need an account to order. <a href="{{ route('home') }}" class="font-semibold text-munch hover:text-box">Continue to the menu</a></p>
     </form>
 </x-guest-layout>

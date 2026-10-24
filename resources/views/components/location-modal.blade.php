@@ -1,14 +1,5 @@
 @php
-    $areas = [
-        ['title' => 'Kigali City', 'detail' => 'Amahoro, Kigali'],
-        ['title' => 'Nyarutarama', 'detail' => 'Gasabo, Kigali'],
-        ['title' => 'Kimironko', 'detail' => 'Gasabo, Kigali'],
-        ['title' => 'Kacyiru', 'detail' => 'Gasabo, Kigali'],
-        ['title' => 'Remera', 'detail' => 'Gasabo, Kigali'],
-        ['title' => 'Gikondo', 'detail' => 'Kicukiro, Kigali'],
-        ['title' => 'Nyamirambo', 'detail' => 'Nyarugenge, Kigali'],
-        ['title' => 'Kicukiro', 'detail' => 'Kicukiro, Kigali'],
-    ];
+    $areas = config('menu.delivery_areas', []);
 @endphp
 
 <div
@@ -30,17 +21,13 @@
             class="w-full max-w-sm rounded-[28px] bg-white px-6 py-8 text-center shadow-2xl"
             @click.outside="confirmHere()"
         >
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center">
-                <img src="{{ asset('images/brand/icon.svg') }}" alt="MunchBox" class="h-14 w-14">
-            </div>
-
             <div class="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-box/10">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6 text-box">
                     <path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
                 </svg>
             </div>
 
-            <h2 class="text-2xl font-extrabold text-ink">Still delivering here?</h2>
+            <h2 class="text-2xl font-extrabold text-ink">Deliver here?</h2>
 
             <div class="mt-5 rounded-2xl bg-[#F5F5F5] px-4 py-4 text-left">
                 <p class="font-extrabold text-ink" x-text="location.title"></p>
@@ -60,7 +47,7 @@
         <div
             x-show="open && editing"
             x-transition
-            class="w-full max-w-sm rounded-[28px] bg-white px-6 py-8 shadow-2xl"
+            class="flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-y-auto rounded-[28px] bg-white px-6 py-8 shadow-2xl"
             @click.outside="editing = false"
         >
             <div class="mb-5 text-center">
@@ -70,7 +57,7 @@
                     </svg>
                 </div>
                 <h2 class="text-2xl font-extrabold text-ink">Choose delivery area</h2>
-                <p class="mt-1 text-sm text-ink/55">We deliver across Kigali</p>
+                <p class="mt-1 text-sm text-ink/55">These are the areas we deliver to</p>
             </div>
 
             <div class="max-h-72 space-y-2 overflow-y-auto pr-1">
@@ -113,7 +100,6 @@
 <script>
 function locationPicker(areas) {
     const STORAGE_KEY = 'munchbox_delivery_location';
-    const CONFIRMED_KEY = 'munchbox_location_confirmed';
     const defaultLocation = areas[0] || { title: 'Kigali City', detail: 'Amahoro, Kigali' };
 
     return {
@@ -130,11 +116,6 @@ function locationPicker(areas) {
                     this.customStreet = saved.street || '';
                 }
             } catch (e) {}
-
-            const confirmed = localStorage.getItem(CONFIRMED_KEY) === '1';
-            if (!confirmed) {
-                this.open = true;
-            }
 
             this.syncUi();
             window.addEventListener('storage', () => this.syncUi());
@@ -153,8 +134,9 @@ function locationPicker(areas) {
                 street: this.customStreet || '',
                 city: 'Kigali',
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-            localStorage.setItem(CONFIRMED_KEY, '1');
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch (e) {}
             this.location = payload;
             this.open = false;
             this.editing = false;
@@ -171,17 +153,6 @@ function locationPicker(areas) {
             document.querySelectorAll('[data-location-detail]').forEach((el) => {
                 el.textContent = this.location.detail;
             });
-
-            const street = document.querySelector('[name="address[street]"]');
-            const city = document.querySelector('[name="address[city]"]');
-            const district = document.querySelector('[name="address[district]"]');
-            const landmark = document.querySelector('[name="address[landmark]"]');
-            if (street) street.value = this.location.street || this.location.title || street.value;
-            if (city) city.value = this.location.city || 'Kigali';
-            if (district && this.location.detail) {
-                district.value = this.location.detail.split(',')[0]?.trim() || district.value;
-            }
-            if (landmark && this.location.detail) landmark.value = this.location.detail;
         },
     }
 }

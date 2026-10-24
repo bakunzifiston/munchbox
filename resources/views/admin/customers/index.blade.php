@@ -18,6 +18,8 @@
                 <th class="px-5 py-3">Customer</th>
                 <th class="px-5 py-3">Phone</th>
                 <th class="px-5 py-3">Orders</th>
+                <th class="px-5 py-3">Spent</th>
+                <th class="px-5 py-3">Last order</th>
                 <th class="px-5 py-3"></th>
             </tr>
         </thead>
@@ -39,12 +41,14 @@
                         <a href="tel:{{ $customer->phone }}" class="font-semibold text-box hover:underline">{{ $customer->phone }}</a>
                     </td>
                     <td class="px-5 py-4 font-semibold text-munch">{{ $customer->orders_count }}</td>
+                    <td class="whitespace-nowrap px-5 py-4">{{ \App\Support\Money::format($customer->spent ?? 0) }}</td>
+                    <td class="whitespace-nowrap px-5 py-4 text-ink/60">{{ $customer->last_order_at ? \Carbon\Carbon::parse($customer->last_order_at, config('app.timezone'))->setTimezone(\App\Support\BusinessTime::timezone())->format('d M Y') : '—' }}</td>
                     <td class="px-5 py-4 text-right">
                         <a href="{{ route('admin.customers.show', $customer) }}" class="font-bold text-box hover:underline">View</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="px-5 py-14 text-center text-ink/40">No customers yet.</td></tr>
+                <tr><td colspan="6" class="px-5 py-14 text-center text-ink/40">No customers yet.</td></tr>
             @endforelse
         </tbody>
     </table>

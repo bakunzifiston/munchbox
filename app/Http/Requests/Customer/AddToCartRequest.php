@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Customer;
 
+use App\Services\CartService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AddToCartRequest extends FormRequest
@@ -26,7 +27,7 @@ class AddToCartRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'quantity' => ['required', 'integer', 'min:1', 'max:20'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:'.CartService::MAX_QUANTITY],
             'options' => ['nullable', 'array'],
             'options.*' => ['integer', 'exists:product_options,id'],
             'notes' => ['nullable', 'string', 'max:500'],

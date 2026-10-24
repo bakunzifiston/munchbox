@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesBusinessTimezone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Delivery extends Model
 {
+    use UsesBusinessTimezone;
+
     protected $fillable = [
         'order_id',
         'address_id',

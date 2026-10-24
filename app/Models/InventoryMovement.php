@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use App\Enums\InventoryMovementType;
+use App\Models\Concerns\UsesBusinessTimezone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class InventoryMovement extends Model
 {
+    use UsesBusinessTimezone;
+
     protected $fillable = [
         'inventory_item_id',
         'type',

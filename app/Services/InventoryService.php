@@ -6,6 +6,8 @@ use App\Enums\InventoryMovementType;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductOption;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -52,36 +54,13 @@ class InventoryService
         }
 
         DB::transaction(function () use ($order, $user) {
-            $order->load(['items.options.productOption.ingredients', 'items.product.ingredients']);
+            $order->load('items.options');
 
-            $requirements = [];
-
-            foreach ($order->items as $item) {
-                if ($item->product) {
-                    foreach ($item->product->ingredients as $ingredient) {
-                        $qty = (float) $ingredient->pivot->quantity_required * $item->quantity;
-                        $requirements[$ingredient->id] = ($requirements[$ingredient->id] ?? 0) + $qty;
-                    }
-                }
-
-                foreach ($item->options as $option) {
-                    $productOption = $option->productOption;
-                    if (! $productOption) {
-                        continue;
-                    }
-
-                    $productOption->loadMissing('ingredients');
-
-                    foreach ($productOption->ingredients as $ingredient) {
-                        $qty = (float) $ingredient->pivot->quantity_required * $item->quantity;
-                        $requirements[$ingredient->id] = ($requirements[$ingredient->id] ?? 0) + $qty;
-                    }
-
-                    if ($productOption->ingredient_id) {
-                        $requirements[$productOption->ingredient_id] = ($requirements[$productOption->ingredient_id] ?? 0) + (1 * $item->quantity);
-                    }
-                }
-            }
+            $requirements = $this->requirementsFor($order->items->map(fn ($item) => [
+                'product_id' => $item->product_id,
+                'option_ids' => $item->options->pluck('product_option_id')->filter()->all(),
+                'quantity' => $item->quantity,
+            ])->all());
 
             foreach ($requirements as $ingredientId => $quantity) {
                 $inventoryItem = InventoryItem::query()
@@ -106,6 +85,126 @@ class InventoryService
 
             $order->update(['inventory_deducted' => true]);
         });
+    }
+
+    /**
+     * Put back stock deducted for an order that will no longer be made. The
+     * original deductions stay in the history; reversals are added next to them.
+     */
+    public function restoreForOrder(Order $order, ?User $user = null): void
+    {
+        if (! $order->inventory_deducted) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $user) {
+            $deducted = InventoryMovement::query()
+                ->where('reference_type', Order::class)
+                ->where('reference_id', $order->id)
+                ->whereIn('type', [InventoryMovementType::OrderDeduction, InventoryMovementType::OrderReversal])
+                ->selectRaw('inventory_item_id, SUM(quantity) as net')
+                ->groupBy('inventory_item_id')
+                ->get();
+
+            foreach ($deducted as $row) {
+                if ((float) $row->net >= 0) {
+                    continue;
+                }
+
+                $this->adjust(
+                    InventoryItem::query()->findOrFail($row->inventory_item_id),
+                    abs((float) $row->net),
+                    InventoryMovementType::OrderReversal,
+                    $user,
+                    "Order {$order->order_number} cancelled",
+                    Order::class,
+                    $order->id
+                );
+            }
+
+            $order->update(['inventory_deducted' => false]);
+        });
+    }
+
+    /**
+     * Ingredients that don't have enough stock on hand for these cart lines.
+     *
+     * @param  iterable<array{product_id: int, options?: array, quantity: int}>  $cartItems
+     * @return list<string> Ingredient names that are short.
+     */
+    public function shortagesForCart(iterable $cartItems): array
+    {
+        $lines = collect($cartItems)->map(fn (array $item) => [
+            'product_id' => $item['product_id'],
+            'option_ids' => collect($item['options'] ?? [])->pluck('id')->all(),
+            'quantity' => $item['quantity'],
+        ])->all();
+
+        $requirements = $this->requirementsFor($lines);
+
+        if ($requirements === []) {
+            return [];
+        }
+
+        return InventoryItem::query()
+            ->with('ingredient')
+            ->whereIn('ingredient_id', array_keys($requirements))
+            ->get()
+            ->filter(fn (InventoryItem $item) => (float) $item->quantity_on_hand < $requirements[$item->ingredient_id])
+            ->map(fn (InventoryItem $item) => $item->ingredient?->name ?? 'an ingredient')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Total ingredient quantities needed, keyed by ingredient id.
+     *
+     * @param  iterable<array{product_id: ?int, option_ids: list<int>, quantity: int}>  $lines
+     * @return array<int, float>
+     */
+    private function requirementsFor(iterable $lines): array
+    {
+        $lines = collect($lines);
+
+        $products = Product::query()
+            ->with('ingredients')
+            ->whereIn('id', $lines->pluck('product_id')->filter()->unique())
+            ->get()
+            ->keyBy('id');
+
+        $options = ProductOption::query()
+            ->with('ingredients')
+            ->whereIn('id', $lines->pluck('option_ids')->flatten()->unique())
+            ->get()
+            ->keyBy('id');
+
+        $requirements = [];
+
+        foreach ($lines as $line) {
+            $quantity = (int) $line['quantity'];
+
+            foreach ($products->get($line['product_id'])?->ingredients ?? [] as $ingredient) {
+                $requirements[$ingredient->id] = ($requirements[$ingredient->id] ?? 0) + (float) $ingredient->pivot->quantity_required * $quantity;
+            }
+
+            foreach ($line['option_ids'] as $optionId) {
+                $option = $options->get($optionId);
+
+                if (! $option) {
+                    continue;
+                }
+
+                foreach ($option->ingredients as $ingredient) {
+                    $requirements[$ingredient->id] = ($requirements[$ingredient->id] ?? 0) + (float) $ingredient->pivot->quantity_required * $quantity;
+                }
+
+                if ($option->ingredient_id) {
+                    $requirements[$option->ingredient_id] = ($requirements[$option->ingredient_id] ?? 0) + $quantity;
+                }
+            }
+        }
+
+        return $requirements;
     }
 
     private function adjust(

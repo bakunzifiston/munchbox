@@ -54,7 +54,7 @@
                     </td>
                     <td class="space-x-3 px-5 py-4 text-right">
                         <a href="{{ route('admin.products.edit', $product) }}" class="font-bold text-box hover:underline">Edit</a>
-                        <form method="POST" action="{{ route('admin.products.destroy', $product) }}" class="inline" onsubmit="return confirm('Delete product?')">
+                        <form method="POST" action="{{ route('admin.products.destroy', $product) }}" class="inline" data-confirm="Delete {{ $product->name }}? Products with past orders are hidden from the menu instead, so sales history is kept.">
                             @csrf @method('DELETE')
                             <button class="font-bold text-rose-700 hover:underline">Delete</button>
                         </form>

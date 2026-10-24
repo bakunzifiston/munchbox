@@ -17,14 +17,15 @@ class UserController extends Controller
         $users = User::query()->with('role')->latest()->paginate(20);
         $roles = Role::query()->orderBy('name')->get();
 
-        $allUsers = User::query()->with('role')->get();
-        $staffCount = $allUsers->filter(fn (User $user) => $user->isStaff())->count();
+        $total = User::query()->count();
+        $active = User::query()->where('is_active', true)->count();
+        $staffCount = User::query()->whereHas('role', fn ($q) => $q->whereIn('slug', ['admin', 'staff']))->count();
 
         $kpis = [
-            ['label' => 'Users', 'value' => $allUsers->count(), 'hint' => 'All accounts'],
-            ['label' => 'Active', 'value' => $allUsers->where('is_active', true)->count(), 'hint' => 'Can sign in', 'tone' => 'success'],
+            ['label' => 'Users', 'value' => $total, 'hint' => 'All accounts'],
+            ['label' => 'Active', 'value' => $active, 'hint' => 'Can sign in', 'tone' => 'success'],
             ['label' => 'Staff / admin', 'value' => $staffCount, 'hint' => 'Back-office access', 'tone' => 'info'],
-            ['label' => 'Inactive', 'value' => $allUsers->where('is_active', false)->count(), 'hint' => 'Disabled accounts', 'tone' => 'warn'],
+            ['label' => 'Inactive', 'value' => $total - $active, 'hint' => 'Disabled accounts', 'tone' => 'warn'],
         ];
 
         return view('admin.users.index', compact('users', 'roles', 'kpis'));
@@ -60,6 +61,17 @@ class UserController extends Controller
             'password' => ['nullable', Password::defaults()],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $adminRoleId = Role::query()->where('slug', 'admin')->value('id');
+        $losesAdmin = $user->isAdmin() && ((int) $data['role_id'] !== (int) $adminRoleId || ! $request->boolean('is_active'));
+
+        if ($losesAdmin && $user->is($request->user())) {
+            return back()->with('error', 'You can’t remove your own admin access or deactivate yourself.');
+        }
+
+        if ($losesAdmin && User::query()->where('role_id', $adminRoleId)->where('is_active', true)->whereKeyNot($user->id)->doesntExist()) {
+            return back()->with('error', 'At least one active admin is required.');
+        }
 
         $payload = [
             'name' => $data['name'],

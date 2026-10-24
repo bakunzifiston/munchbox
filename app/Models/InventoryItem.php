@@ -35,6 +35,21 @@ class InventoryItem extends Model
         return $this->hasMany(InventoryMovement::class)->latest();
     }
 
+    public function formattedQuantity(): string
+    {
+        return self::trimNumber($this->quantity_on_hand).' '.$this->ingredient?->unit;
+    }
+
+    public function formattedThreshold(): string
+    {
+        return self::trimNumber($this->low_stock_threshold).' '.$this->ingredient?->unit;
+    }
+
+    private static function trimNumber(mixed $value): string
+    {
+        return rtrim(rtrim(number_format((float) $value, 2, '.', ','), '0'), '.');
+    }
+
     public function isLowStock(): bool
     {
         return (float) $this->quantity_on_hand <= (float) $this->low_stock_threshold;
