@@ -19,7 +19,7 @@ class ProductController extends Controller
     {
         $products = Product::query()
             ->with('category')
-            ->when($request->q, fn ($q, $search) => $q->where('name', 'ilike', "%{$search}%"))
+            ->when($request->q, fn ($q, $search) => $q->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($search).'%']))
             ->orderBy('sort_order')
             ->paginate(15)
             ->withQueryString();
@@ -89,6 +89,13 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        // Ordered products stay in the database so sales reports keep linking to them.
+        if ($product->orderItems()->exists()) {
+            $product->update(['is_active' => false]);
+
+            return back()->with('success', "{$product->name} has past orders, so it was hidden from the menu instead of deleted.");
+        }
+
         $this->deleteStoredImage($product->image);
         $product->delete();
 

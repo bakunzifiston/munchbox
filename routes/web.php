@@ -26,11 +26,14 @@ Route::get('/menu/{slug}', [MenuController::class, 'show'])->name('menu.show');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/{product}', [CartController::class, 'store'])->name('cart.store');
+Route::delete('/cart', [CartController::class, 'clear'])->name('cart.clear');
 Route::patch('/cart/{key}', [CartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/{key}', [CartController::class, 'destroy'])->name('cart.destroy');
 
 Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
-Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::post('/checkout', [CheckoutController::class, 'store'])
+    ->name('checkout.store')
+    ->block(lockSeconds: 15, waitSeconds: 15);
 
 Route::get('/orders/track', [OrderController::class, 'track'])->name('orders.track');
 Route::get('/orders/{order}/confirmation', [OrderController::class, 'confirmation'])->name('orders.confirmation');
@@ -53,42 +56,60 @@ Route::middleware('auth')->group(function () {
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'staff'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
-    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    Route::middleware('can:manage-orders')->group(function () {
+        Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/create', [AdminOrderController::class, 'create'])->name('orders.create');
+        Route::post('/orders', [AdminOrderController::class, 'store'])->name('orders.store');
+        Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+        Route::get('/orders/{order}/receipt', [AdminOrderController::class, 'receipt'])->name('orders.receipt');
+        Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+        Route::patch('/orders/{order}/payment', [AdminOrderController::class, 'recordPayment'])->name('orders.payment');
 
-    Route::resource('products', AdminProductController::class)->except(['show']);
-    Route::resource('categories', AdminCategoryController::class)->except(['show', 'create', 'edit']);
+        Route::get('/deliveries', [AdminDeliveryController::class, 'index'])->name('deliveries.index');
+        Route::patch('/deliveries/{delivery}', [AdminDeliveryController::class, 'update'])->name('deliveries.update');
+    });
 
-    Route::get('/options', [AdminOptionGroupController::class, 'index'])->name('options.index');
-    Route::post('/options', [AdminOptionGroupController::class, 'store'])->name('options.store');
-    Route::get('/options/{option}', [AdminOptionGroupController::class, 'show'])->name('options.show');
-    Route::put('/options/{option}', [AdminOptionGroupController::class, 'update'])->name('options.update');
-    Route::delete('/options/{option}', [AdminOptionGroupController::class, 'destroy'])->name('options.destroy');
-    Route::post('/options/{option}/choices', [AdminOptionGroupController::class, 'storeOption'])->name('options.choices.store');
-    Route::put('/options/{option}/choices/{choice}', [AdminOptionGroupController::class, 'updateOption'])->name('options.choices.update');
-    Route::delete('/options/{option}/choices/{choice}', [AdminOptionGroupController::class, 'destroyOption'])->name('options.choices.destroy');
+    Route::middleware('can:manage-stock')->group(function () {
+        Route::get('/ingredients', [AdminIngredientController::class, 'index'])->name('ingredients.index');
+        Route::get('/inventory', [AdminInventoryController::class, 'index'])->name('inventory.index');
+        Route::get('/inventory/{item}/movements', [AdminInventoryController::class, 'movements'])->name('inventory.movements');
+        Route::post('/inventory/{item}/adjust', [AdminInventoryController::class, 'adjust'])->name('inventory.adjust');
+    });
 
-    Route::get('/ingredients', [AdminIngredientController::class, 'index'])->name('ingredients.index');
-    Route::post('/ingredients', [AdminIngredientController::class, 'store'])->name('ingredients.store');
-    Route::patch('/ingredients/{ingredient}', [AdminIngredientController::class, 'update'])->name('ingredients.update');
-    Route::delete('/ingredients/{ingredient}', [AdminIngredientController::class, 'destroy'])->name('ingredients.destroy');
+    Route::middleware('can:manage-catalog')->group(function () {
+        Route::resource('products', AdminProductController::class)->except(['show']);
+        Route::resource('categories', AdminCategoryController::class)->except(['show', 'create', 'edit']);
 
-    Route::get('/inventory', [AdminInventoryController::class, 'index'])->name('inventory.index');
-    Route::get('/inventory/{item}/movements', [AdminInventoryController::class, 'movements'])->name('inventory.movements');
-    Route::post('/inventory/{item}/adjust', [AdminInventoryController::class, 'adjust'])->name('inventory.adjust');
+        Route::get('/options', [AdminOptionGroupController::class, 'index'])->name('options.index');
+        Route::post('/options', [AdminOptionGroupController::class, 'store'])->name('options.store');
+        Route::get('/options/{option}', [AdminOptionGroupController::class, 'show'])->name('options.show');
+        Route::put('/options/{option}', [AdminOptionGroupController::class, 'update'])->name('options.update');
+        Route::delete('/options/{option}', [AdminOptionGroupController::class, 'destroy'])->name('options.destroy');
+        Route::post('/options/{option}/choices', [AdminOptionGroupController::class, 'storeOption'])->name('options.choices.store');
+        Route::put('/options/{option}/choices/{choice}', [AdminOptionGroupController::class, 'updateOption'])->name('options.choices.update');
+        Route::delete('/options/{option}/choices/{choice}', [AdminOptionGroupController::class, 'destroyOption'])->name('options.choices.destroy');
 
-    Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
-    Route::get('/customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
+        Route::post('/ingredients', [AdminIngredientController::class, 'store'])->name('ingredients.store');
+        Route::patch('/ingredients/{ingredient}', [AdminIngredientController::class, 'update'])->name('ingredients.update');
+        Route::delete('/ingredients/{ingredient}', [AdminIngredientController::class, 'destroy'])->name('ingredients.destroy');
+    });
 
-    Route::get('/deliveries', [AdminDeliveryController::class, 'index'])->name('deliveries.index');
-    Route::patch('/deliveries/{delivery}', [AdminDeliveryController::class, 'update'])->name('deliveries.update');
+    Route::middleware('can:view-customers')->group(function () {
+        Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
+    });
 
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
-    Route::patch('/settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::middleware('can:view-financials')->group(function () {
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+    });
 
-    Route::middleware('admin')->group(function () {
+    Route::middleware('can:manage-settings')->group(function () {
+        Route::get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
+        Route::patch('/settings', [SettingController::class, 'update'])->name('settings.update');
+    });
+
+    Route::middleware('can:manage-users')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
         Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');

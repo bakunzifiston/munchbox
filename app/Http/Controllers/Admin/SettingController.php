@@ -14,25 +14,31 @@ class SettingController extends Controller
     {
         $settings = BusinessSetting::query()->orderBy('group')->orderBy('key')->get()->groupBy('group');
 
-        $kpis = [
-            ['label' => 'Groups', 'value' => $settings->count(), 'hint' => 'Setting sections'],
-            ['label' => 'Settings', 'value' => $settings->flatten()->count(), 'hint' => 'Configurable values'],
-            ['label' => 'Delivery fee', 'value' => number_format((float) BusinessSetting::getValue('delivery_fee', 1500), 0).' RWF', 'hint' => 'Current fee'],
-            ['label' => 'Min order', 'value' => number_format((float) BusinessSetting::getValue('min_order_amount', 0), 0).' RWF', 'hint' => 'Checkout minimum', 'tone' => 'info'],
-        ];
-
-        return view('admin.settings.edit', compact('settings', 'kpis'));
+        return view('admin.settings.edit', compact('settings'));
     }
 
     public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'settings' => ['required', 'array'],
-            'settings.*' => ['nullable'],
-        ]);
+        $settings = BusinessSetting::query()->get()->keyBy('key');
+
+        $rules = ['settings' => ['required', 'array']];
+        foreach ($settings as $key => $setting) {
+            $rules["settings.$key"] = match (true) {
+                $key === 'email' => ['nullable', 'email', 'max:255'],
+                $key === 'phone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9\s()-]+$/'],
+                $key === 'inventory_deduct_on_status' => ['required', 'in:confirmed,preparing'],
+                $setting->type === 'integer' => ['nullable', 'integer', 'min:0'],
+                $setting->type === 'decimal' => ['nullable', 'numeric', 'min:0'],
+                $setting->type === 'boolean' => ['nullable', 'boolean'],
+                $setting->type === 'json' => ['nullable', 'json'],
+                default => ['nullable', 'string', 'max:1000'],
+            };
+        }
+
+        $data = $request->validate($rules);
 
         foreach ($data['settings'] as $key => $value) {
-            $setting = BusinessSetting::query()->where('key', $key)->first();
+            $setting = $settings->get($key);
             if (! $setting) {
                 continue;
             }
@@ -41,7 +47,7 @@ class SettingController extends Controller
                 $value = $request->boolean("settings.$key") ? '1' : '0';
             }
 
-            $setting->update(['value' => is_array($value) ? json_encode($value) : (string) $value]);
+            $setting->update(['value' => (string) $value]);
         }
 
         return back()->with('success', 'Settings saved.');

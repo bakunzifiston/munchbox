@@ -6,7 +6,6 @@ use App\Enums\FulfillmentType;
 use App\Enums\OrderStatus;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\Role;
 use App\Models\User;
 use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,7 +26,7 @@ class OrderTrackingTest extends TestCase
 
         $response->assertOk();
         $response->assertSee($order->order_number);
-        $response->assertSee('Pending');
+        $response->assertSee('Order placed');
     }
 
     public function test_tracking_accepts_phone_with_different_formatting(): void
@@ -41,7 +40,7 @@ class OrderTrackingTest extends TestCase
 
         $response->assertOk();
         $response->assertSee($order->order_number);
-        $response->assertDontSee('No order found');
+        $response->assertDontSee('We couldn’t find an order');
     }
 
     public function test_tracking_rejects_wrong_phone(): void
@@ -54,7 +53,7 @@ class OrderTrackingTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee('No order found');
+        $response->assertSee('We couldn’t find an order');
     }
 
     public function test_confirmation_is_accessible_via_session_after_order(): void
@@ -86,8 +85,8 @@ class OrderTrackingTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertSee('Progress');
-        $response->assertSee('Pending');
+        $response->assertSee('Order progress');
+        $response->assertSee('Order placed');
     }
 
     public function test_admin_status_progress_is_visible_when_tracking(): void

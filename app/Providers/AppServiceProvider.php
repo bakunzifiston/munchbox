@@ -22,7 +22,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Order::class, OrderPolicy::class);
 
+        // Staff run day-to-day operations; admins also manage the menu, money, customers and people.
         Gate::define('access-admin', fn ($user) => $user->isStaff());
+        Gate::define('manage-orders', fn ($user) => $user->isStaff());
+        Gate::define('manage-stock', fn ($user) => $user->isStaff());
+        Gate::define('manage-catalog', fn ($user) => $user->isAdmin());
+        Gate::define('view-financials', fn ($user) => $user->isAdmin());
+        Gate::define('view-customers', fn ($user) => $user->isAdmin());
+        Gate::define('manage-settings', fn ($user) => $user->isAdmin());
         Gate::define('manage-users', fn ($user) => $user->isAdmin());
 
         Blade::directive('rwf', function ($expression) {

@@ -4,12 +4,11 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\AddToCartRequest;
-use App\Models\OptionGroup;
+use App\Models\BusinessSetting;
 use App\Models\Product;
 use App\Services\CartService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -18,6 +17,7 @@ class CartController extends Controller
 
     public function index(): View
     {
+        $notices = $this->cart->refresh();
         $summary = $this->cart->summary();
         $inCartIds = collect($summary['items'])->pluck('product_id')->unique()->all();
 
@@ -26,11 +26,14 @@ class CartController extends Controller
             ->when($inCartIds !== [], fn ($q) => $q->whereNotIn('id', $inCartIds))
             ->orderByDesc('is_featured')
             ->orderBy('sort_order')
-            ->limit(4)
+            ->limit(3)
             ->get();
 
         return view('customer.cart.index', array_merge($summary, [
             'suggestions' => $suggestions,
+            'notices' => $notices,
+            'deliveryFee' => (float) BusinessSetting::getValue('delivery_fee', 0),
+            'minOrder' => (float) BusinessSetting::getValue('min_order_amount', 0),
         ]));
     }
 
@@ -39,7 +42,6 @@ class CartController extends Controller
         abort_unless($product->is_active, 404);
 
         $optionIds = collect($request->validated('options', []))->map(fn ($id) => (int) $id)->all();
-        $this->validateOptionSelections($product, $optionIds);
 
         $this->cart->add(
             $product,
@@ -50,12 +52,12 @@ class CartController extends Controller
 
         return redirect()
             ->route('cart.index')
-            ->with('success', "{$product->name} added. You can keep shopping or checkout when ready.");
+            ->with('success', "{$product->name} added to your order.");
     }
 
     public function update(Request $request, string $key): RedirectResponse
     {
-        $request->validate(['quantity' => ['required', 'integer', 'min:0', 'max:20']]);
+        $request->validate(['quantity' => ['required', 'integer', 'min:0', 'max:'.CartService::MAX_QUANTITY]]);
         $this->cart->updateQuantity($key, (int) $request->integer('quantity'));
 
         return back()->with('success', 'Cart updated.');
@@ -68,28 +70,10 @@ class CartController extends Controller
         return back()->with('success', 'Item removed from cart.');
     }
 
-    /**
-     * @param  list<int>  $optionIds
-     */
-    private function validateOptionSelections(Product $product, array $optionIds): void
+    public function clear(): RedirectResponse
     {
-        $product->load(['optionGroups.activeOptions']);
+        $this->cart->clear();
 
-        foreach ($product->optionGroups as $group) {
-            /** @var OptionGroup $group */
-            $selected = $group->activeOptions->whereIn('id', $optionIds)->count();
-
-            if ($group->is_required && $selected < max(1, $group->min_selections)) {
-                throw ValidationException::withMessages([
-                    'options' => "Please choose {$group->name}.",
-                ]);
-            }
-
-            if ($selected > $group->max_selections) {
-                throw ValidationException::withMessages([
-                    'options' => "Too many selections for {$group->name}.",
-                ]);
-            }
-        }
+        return redirect()->route('cart.index')->with('success', 'Your cart is now empty.');
     }
 }

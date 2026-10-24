@@ -4,6 +4,9 @@ namespace App\Models;
 
 use App\Enums\FulfillmentType;
 use App\Enums\OrderStatus;
+use App\Models\Concerns\UsesBusinessTimezone;
+use App\Support\BusinessTime;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Order extends Model
 {
+    use UsesBusinessTimezone;
+
     protected $fillable = [
         'order_number',
         'user_id',
@@ -92,14 +97,35 @@ class Order extends Model
         return $this->hasOne(Payment::class)->latestOfMany();
     }
 
+    /**
+     * Orders placed on today's business day (Kigali time).
+     */
     public function scopeToday(Builder $query): Builder
     {
-        return $query->whereDate('created_at', today());
+        return $query->whereBetween('orders.created_at', BusinessTime::dayRange());
+    }
+
+    public function scopePlacedBetween(Builder $query, CarbonInterface $from, CarbonInterface $to): Builder
+    {
+        return $query->whereBetween('orders.created_at', BusinessTime::range($from, $to));
+    }
+
+    /**
+     * Orders that count towards sales (not cancelled or rejected).
+     */
+    public function scopeCountsTowardsSales(Builder $query): Builder
+    {
+        return $query->whereNotIn('orders.status', OrderStatus::excludedFromSales());
+    }
+
+    public function scopeInProgress(Builder $query): Builder
+    {
+        return $query->whereIn('orders.status', array_map(fn (OrderStatus $s) => $s->value, OrderStatus::inProgress()));
     }
 
     public function scopePending(Builder $query): Builder
     {
-        return $query->where('status', OrderStatus::Pending);
+        return $query->where('orders.status', OrderStatus::Pending);
     }
 
     public function scopeActive(Builder $query): Builder
